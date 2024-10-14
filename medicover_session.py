@@ -40,7 +40,7 @@ class MedicoverSession:
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
         }
-        self.cookies_path = appdirs.user_cache_dir("medihunter", "medihunter") + "/cookies"
+        self.cookies_path = appdirs.user_cache_dir("medihunter", "medihunter") + "/cookies-" + username
 
     def save_cookies(self):
         os.makedirs(os.path.dirname(self.cookies_path), exist_ok=True)
