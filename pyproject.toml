@@ -14,6 +14,10 @@ beautifulsoup4 = "^4.12.3"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
 pytest-dotenv = "^0.5.2"
+ruff = "^0.7.2"
+pre-commit = "^4.0.1"
+mypy = "^1.13.0"
+types-beautifulsoup4 = "^4.12.0.20241020"
 
 [build-system]
 requires = ["poetry-core"]
@@ -23,3 +27,55 @@ build-backend = "poetry.core.masonry.api"
 env_files = [
     ".env"
 ]
+
+[tool.ruff]
+line-length = 120
+select = [
+    "F", # pyflakes
+    "I", # isort
+    "RUF", # ruff specific rules
+    "E", # pycodestyle Errors
+    "W", # pycodestyle Warnings
+    "UP", # pyupgrade
+    "N", # pep8-naming
+    "PL", # pylint
+    "T20", # flake8-print
+    "ASYNC", #flake8-async
+    "B", # flake8-bugbear
+    "A", # flake8-builtins
+    "C4", # flake8-comprehensions
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "G", # flake8-logging-format
+    "INP", # flake8-no-pep420
+    "PIE", # flake8-pie
+    "PT", # flake8-pytest-style
+    "Q", # flake8-quotes
+    "TID", # flake8-tidy-imports
+    "PTH", # flake8-use-pathli
+]
+
+exclude = [
+    "medicover_session.py",
+    "medihunter.py",
+    "medihunter_notifiers.py",
+    "medihunter_pushover.py",
+    "setup.py",
+]
+
+[tool.ruff.pylint]
+max-args = 4
+
+[tool.mypy]
+disallow_any_generics = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_return_any = true
+warn_redundant_casts = true
+strict_equality = true
+
+exclude = "^(medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py)$"

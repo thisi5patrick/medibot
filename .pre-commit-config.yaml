@@ -1,0 +1,26 @@
+default_stages: [ pre-commit ]
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.14
+    hooks:
+      # linter
+      - id: ruff
+        args: [ --fix ]
+      # formatter
+      - id: ruff-format
+        types: [ python ]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: [ --config-file, pyproject.toml ]
+        types: [ python ]
+        exclude: "^(medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py)$"
+        additional_dependencies:
+          - httpx
+          - types-beautifulsoup4
+          - pytest-stub

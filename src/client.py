@@ -1,8 +1,30 @@
-import requests
-from bs4 import BeautifulSoup
-from httpx import Client, Headers, Cookies
+from functools import wraps
+from typing import Any, Callable, TypeVar, cast
 
-from src.api_urls import BASE_URL, BASE_OAUTH_URL, APPOINTMENTS
+import httpx
+from bs4 import BeautifulSoup
+from httpx import Client, Cookies, Headers
+
+from src.api_urls import APPOINTMENTS, BASE_OAUTH_URL, BASE_URL
+
+R = TypeVar("R")
+
+
+def with_login_retry(max_attempts: int = 3, **kwargs: Any) -> Callable[[Callable[..., R]], Callable[..., R]]:
+    def decorator(func: Callable[..., R]) -> Callable[..., R]:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> R:
+            attempts = 0
+            while attempts < max_attempts:
+                result = func(*args, **kwargs)
+                if result:
+                    return result
+                attempts += 1
+            raise ValueError("Login failed")
+
+        return wrapper
+
+    return decorator
 
 
 class MedicoverClient:
@@ -11,41 +33,9 @@ class MedicoverClient:
         self.password = password
         self.sign_in_cookie: None | str = None
 
-    def extract_data_from_login_form(self, page_text: str) -> dict[str, str]:
-        """ Extract values from input fields and prepare data for login request. """
-        data = {"UserName": self.username, "Password": self.password}
-        soup = BeautifulSoup(page_text, "html.parser")
-        for input_tag in soup.find_all("input"):
-            if input_tag["name"] == "ReturnUrl":
-                data["ReturnUrl"] = input_tag["value"]
-            elif input_tag["name"] == "__RequestVerificationToken":
-                data["__RequestVerificationToken"] = input_tag["value"]
-        return data
-
-    @staticmethod
-    def form_to_dict(page_text: str) -> dict[str, str]:
-        """ Extract values from input fields. """
-        data = {}
-        soup = BeautifulSoup(page_text, "html.parser")
-        for input_tag in soup.find_all("input"):
-            if input_tag["name"] == "code":
-                data["code"] = input_tag["value"]
-            elif input_tag["name"] == "id_token":
-                data["id_token"] = input_tag["value"]
-            elif input_tag["name"] == "scope":
-                data["scope"] = input_tag["value"]
-            elif input_tag["name"] == "state":
-                data["state"] = input_tag["value"]
-            elif input_tag["name"] == "session_state":
-                data["session_state"] = input_tag["value"]
-        return data
-
     def log_in(self) -> None:
         with Client() as client:
-            response = client.get(
-                BASE_URL + "/Users/Account/LogOn?ReturnUrl=%2F",
-                follow_redirects=True
-            )
+            response = client.get(BASE_URL + "/Users/Account/LogOn?ReturnUrl=%2F", follow_redirects=True)
             signin_hash = response.url.params.get("signin")
 
             response = client.get(
@@ -72,7 +62,7 @@ class MedicoverClient:
             data = self.form_to_dict(response.text)
 
             if not data:
-                 raise ValueError("Login failed")
+                raise ValueError("Login failed")
 
             response = client.post(
                 f"{BASE_OAUTH_URL}/signin-oidc",
@@ -93,8 +83,43 @@ class MedicoverClient:
 
             self.sign_in_cookie = response.cookies[".ASPXAUTH"]
 
+    @with_login_retry(max_attempts=3)
+    def get_appointments(self) -> list[dict[str, str]] | None:
+        # TODO: Needs refactoring
+        if self.sign_in_cookie:
+            with Client(cookies=Cookies({".ASPXAUTH": self.sign_in_cookie})) as client:
+                response = client.post(APPOINTMENTS, headers=Headers({"X-Requested-With": "XMLHttpRequest"}))
+                if response.status_code == httpx.codes.OK:
+                    return cast(list[dict[str, str]], response.json())
+                self.log_in()
+                return None
+        return None
 
-    def get_appointments(self) -> list[dict[str, str]]:
-        with Client(cookies=Cookies({".ASPXAUTH": self.sign_in_cookie})) as client:
-            response = client.get(APPOINTMENTS, headers=Headers({"X-Requested-With": "XMLHttpRequest"}))
-            ...
+    def extract_data_from_login_form(self, page_text: str) -> dict[str, str]:
+        """Extract values from input fields and prepare data for login request."""
+        data = {"UserName": self.username, "Password": self.password}
+        soup = BeautifulSoup(page_text, "html.parser")
+        for input_tag in soup.find_all("input"):
+            if input_tag["name"] == "ReturnUrl":
+                data["ReturnUrl"] = input_tag["value"]
+            elif input_tag["name"] == "__RequestVerificationToken":
+                data["__RequestVerificationToken"] = input_tag["value"]
+        return data
+
+    @staticmethod
+    def form_to_dict(page_text: str) -> dict[str, str]:
+        """Extract values from input fields."""
+        data = {}
+        soup = BeautifulSoup(page_text, "html.parser")
+        for input_tag in soup.find_all("input"):
+            if input_tag["name"] == "code":
+                data["code"] = input_tag["value"]
+            elif input_tag["name"] == "id_token":
+                data["id_token"] = input_tag["value"]
+            elif input_tag["name"] == "scope":
+                data["scope"] = input_tag["value"]
+            elif input_tag["name"] == "state":
+                data["state"] = input_tag["value"]
+            elif input_tag["name"] == "session_state":
+                data["session_state"] = input_tag["value"]
+        return data
