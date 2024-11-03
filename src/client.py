@@ -1,4 +1,6 @@
 import logging
+import time
+from datetime import datetime
 from functools import wraps
 from typing import Any, Callable, TypedDict, TypeVar, cast
 
@@ -193,12 +195,72 @@ class MedicoverClient:
             doctor_id = doctor["id"]
             logging.info("Selected doctor: %s", doctor["text"])
 
-        self.get_available_slots(region_id, specialization_id, doctor_id, clinic_id)
+        from_date_input = input("Give the date from (dd-mm-yyyy HH:MM) or ENTER for now: ")
+        if from_date_input:
+            from_date, from_time = self.extract_dates(from_date_input)
+        else:
+            from_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            from_time = "00:00"
+
+        to_time_input = input("Give the time to (HH:MM): ")
+        if to_time_input:
+            to_time = datetime.strptime(to_time_input, "%H:%M").strftime("%H:%M")
+        else:
+            to_time = datetime.now().strftime("%H:%M")
+
+        slots = self.get_available_slots(
+            region_id,
+            specialization_id,
+            doctor_id,
+            clinic_id,
+            from_date=from_date,
+            from_time=from_time,
+            to_time=to_time,
+        )
+
+        if not slots:
+            logging.info("No slots available")
+            y_n = input("Do you want to create a monitor? (y/n) ")
+            if y_n == "y":
+                self.create_monitor(
+                    region_id=region_id,
+                    specialization_id=specialization_id,
+                    clinic_id=clinic_id,
+                    doctor_id=doctor_id,
+                    from_date=from_date,
+                    from_time=from_time,
+                    to_time=to_time,
+                )
+            else:
+                return
+        logger.info("Available slots: %s", slots)
+
+    def create_monitor(self, **kwargs: Any) -> None:
+        while True:
+            slots = self.get_available_slots(**kwargs)
+            if slots:
+                break
+            logger.info("No slots available for given parameters. Trying again in 30 seconds...")
+            time.sleep(30)
+
+    @staticmethod
+    def extract_dates(user_input: str) -> tuple[str, str]:
+        date_format = "%d-%m-%Y %H:%M"
+        datetime_object = datetime.strptime(user_input, date_format)
+        date_ = datetime_object.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        time_ = datetime_object.strftime("%H:%M")
+
+        return date_, time_
 
     @with_login_retry
     def get_available_slots(
-        self, region_id: int, specialization_id: int, doctor_id: int | None = None, clinic_id: int | None = None
-    ) -> None:
+        self,
+        region_id: int,
+        specialization_id: int,
+        doctor_id: int | None = None,
+        clinic_id: int | None = None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
         with Client(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
             response = client.post(
                 AVAILABLE_SLOTS,
@@ -208,13 +270,16 @@ class MedicoverClient:
                     "serviceIds": [specialization_id],
                     "clinicIds": [clinic_id] if clinic_id else [],
                     "doctorIds": [doctor_id] if doctor_id else [],
+                    "searchSince": kwargs["from_date"],
+                    "startTime": kwargs["from_time"],
+                    "endTime": kwargs["to_time"],
                 },
                 headers=Headers({"X-Requested-With": "XMLHttpRequest"}),
             )
             response.raise_for_status()
 
         response_json = response.json()
-        logging.info("Available slots: %s", response_json["items"])
+        return cast(list[dict[str, Any]], response_json["items"])
 
     @with_login_retry
     def get_region(self, user_region: str) -> list[FilterDataType]:
