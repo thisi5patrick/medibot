@@ -24,3 +24,4 @@ repos:
           - httpx
           - types-beautifulsoup4
           - pytest-stub
+          - pick

@@ -64,6 +64,20 @@ files = [
 ]
 
 [[package]]
+name = "click"
+version = "8.1.7"
+description = "Composable command line interface toolkit"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "click-8.1.7-py3-none-any.whl", hash = "sha256:ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28"},
+    {file = "click-8.1.7.tar.gz", hash = "sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -281,6 +295,20 @@ files = [
     {file = "packaging-24.1-py3-none-any.whl", hash = "sha256:5b8f2217dbdbd2f7f384c41c628544e6d52f2d0f53c6d0c3ea61aa5d1d7ff124"},
     {file = "packaging-24.1.tar.gz", hash = "sha256:026ed72c8ed3fcce5bf8950572258698927fd1dbda10a5e981cdf0ac37f4f002"},
 ]
+
+[[package]]
+name = "pick"
+version = "2.4.0"
+description = "Pick an option in the terminal with a simple GUI"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pick-2.4.0-py3-none-any.whl", hash = "sha256:2b07be18d16d655c7f491e1ecca7a29de3be85e1e000c8d46193672f14faa203"},
+    {file = "pick-2.4.0.tar.gz", hash = "sha256:71f1b1b5d83652f87652fea5f51a3ba0b3388a71718cdcf8c6bc1326f85ae0b9"},
+]
+
+[package.dependencies]
+windows-curses = {version = ">=2.2.0,<3.0.0", markers = "sys_platform == \"win32\""}
 
 [[package]]
 name = "platformdirs"
@@ -547,7 +575,30 @@ platformdirs = ">=3.9.1,<5"
 docs = ["furo (>=2023.7.26)", "proselint (>=0.13)", "sphinx (>=7.1.2,!=7.3)", "sphinx-argparse (>=0.4)", "sphinxcontrib-towncrier (>=0.2.1a0)", "towncrier (>=23.6)"]
 test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess (>=1)", "flaky (>=3.7)", "packaging (>=23.1)", "pytest (>=7.4)", "pytest-env (>=0.8.2)", "pytest-freezer (>=0.4.8)", "pytest-mock (>=3.11.1)", "pytest-randomly (>=3.12)", "pytest-timeout (>=2.1)", "setuptools (>=68)", "time-machine (>=2.10)"]
 
+[[package]]
+name = "windows-curses"
+version = "2.4.0"
+description = "Support for the standard curses module on Windows"
+optional = false
+python-versions = "*"
+files = [
+    {file = "windows_curses-2.4.0-cp310-cp310-win32.whl", hash = "sha256:525fa12689aa54cd8e4cfa6d03f3d4d336f2e9ef0b6db4fdb4d3c1b22a71180b"},
+    {file = "windows_curses-2.4.0-cp310-cp310-win_amd64.whl", hash = "sha256:4621042a28f48e2240314a624eb36f18121483d47f12c488cad9670f402ba6d7"},
+    {file = "windows_curses-2.4.0-cp311-cp311-win32.whl", hash = "sha256:90fde3341b2361f45716cfbe44bd253ac6a07dfde7262f3afdcf7cc0285c35ac"},
+    {file = "windows_curses-2.4.0-cp311-cp311-win_amd64.whl", hash = "sha256:0c32be4aa97887febff175a8a6b3deeecc06c1a3f47ecbb5f62de6bf4165d6db"},
+    {file = "windows_curses-2.4.0-cp312-cp312-win32.whl", hash = "sha256:e165db84de30039f6da6bded9aa2f88e3c1ae7be11dc7c84416cbe6ba0ac4f29"},
+    {file = "windows_curses-2.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:f50d02833a7e7866b9f42d62febbdf83c6703575240e9bbdd1446d09d70505d3"},
+    {file = "windows_curses-2.4.0-cp36-cp36m-win32.whl", hash = "sha256:fcb0591fc6e647556f685327a6f3e6923afc8a16c35436665df692556b78e708"},
+    {file = "windows_curses-2.4.0-cp36-cp36m-win_amd64.whl", hash = "sha256:e1f137d347e300e6163fa0aa31f7a02f6da42e43a90ce423bc929fb06752385e"},
+    {file = "windows_curses-2.4.0-cp37-cp37m-win32.whl", hash = "sha256:6771fb73f5a66d281a6f5e474dcfe07a4dd64460ff17c72ed9dd35fdf65fbfc8"},
+    {file = "windows_curses-2.4.0-cp37-cp37m-win_amd64.whl", hash = "sha256:68d633cdb7e82ec207184ab3be74c058e184cd34f76407801cf451be4ee85861"},
+    {file = "windows_curses-2.4.0-cp38-cp38-win32.whl", hash = "sha256:342b786c82fda5f9592593b2f8f4078de40b31baaf331be57af4c3c9a2e40061"},
+    {file = "windows_curses-2.4.0-cp38-cp38-win_amd64.whl", hash = "sha256:c77973c5af419c3d9bcb99908dc9791102813026d6abdda9236e44d9342c9579"},
+    {file = "windows_curses-2.4.0-cp39-cp39-win32.whl", hash = "sha256:6f481322360dbcdfa37b30654c89aa2920f4528eaefec3a50fa6a6d07be49069"},
+    {file = "windows_curses-2.4.0-cp39-cp39-win_amd64.whl", hash = "sha256:441189fb71c455ed0575ffb1b840d5857c01c4dda441cbbbd34a6216e7207bfa"},
+]
+
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "71eaf1340fedafc980563f0588ce57cc3d3a5c7d68f95d360e5c74e801691704"
+content-hash = "f5bfeaac0edf723b6903deb7ce999ecc4603c59d06e5d190a428044ef8cfd21f"
