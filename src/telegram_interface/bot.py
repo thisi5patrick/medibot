@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Any
 
 from dotenv import load_dotenv
 from telegram import BotCommand
@@ -46,7 +47,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-async def post_init(application: Application) -> None:  # type: ignore[type-arg]
+async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> None:
     await application.bot.set_my_commands(
         [
             BotCommand("/login", "Login to Medicover"),

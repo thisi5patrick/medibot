@@ -1,4 +1,5 @@
 import logging
+from typing import Any, cast
 
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
@@ -18,26 +19,30 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def username(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if context.user_data is None or update.message is None:
+    if update.message is None:
         return ConversationHandler.END
 
-    context.user_data["username"] = update.message.text
+    user_data = cast(dict[Any, Any], context.user_data)
+
+    user_data["username"] = update.message.text
     await update.message.reply_text("Please provide your password:")
     return PROVIDE_PASSWORD
 
 
 async def password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if context.user_data is None or update.message is None:
+    if update.message is None:
         return ConversationHandler.END
 
-    context.user_data["password"] = update.message.text
-    username = context.user_data["username"]
-    password = context.user_data["password"]
+    user_data = cast(dict[Any, Any], context.user_data)
+
+    user_data["password"] = update.message.text
+    username = user_data["username"]
+    password = user_data["password"]
 
     medicover_client = MedicoverClient(username, password)
     try:
         medicover_client.log_in()
-        context.user_data["medicover_client"] = medicover_client
+        user_data["medicover_client"] = medicover_client
         await update.message.reply_text("Login attempt successful.")
         return ConversationHandler.END
     except Exception:

@@ -81,4 +81,4 @@ warn_return_any = true
 warn_redundant_casts = true
 strict_equality = true
 
-exclude = "medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py|src/telegram_interface/"
+exclude = "medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py"

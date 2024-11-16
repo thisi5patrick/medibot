@@ -19,10 +19,11 @@ repos:
       - id: mypy
         args: [ --config-file, pyproject.toml ]
         types: [ python ]
-        exclude: "medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py|src/telegram_interface/"
+        exclude: "medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py"
         additional_dependencies:
           - httpx
           - types-beautifulsoup4
           - pytest-stub
           - pick
           - python-telegram-bot
+          - python-dotenv
