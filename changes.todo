@@ -1,0 +1,11 @@
+[] - Remove medicover_session.py
+[] - Remove medihunter_notifiers.py
+[] - Remove medihunter.py
+[] - Remove medihunter_pushover.py
+[] - Remove requirements.txt
+[] - Update README
+[] - Initialize telegram bot
+[] - Add languages to bot
+[] - Update Dockerfile
+[] - Update setup.py
+[] - Fix mypy

@@ -11,6 +11,7 @@ httpx = "^0.27.2"
 beautifulsoup4 = "^4.12.3"
 pick = "^2.4.0"
 click = "^8.1.7"
+python-telegram-bot = "^21.6"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -80,4 +81,4 @@ warn_return_any = true
 warn_redundant_casts = true
 strict_equality = true
 
-exclude = "^(medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py)$"
+exclude = "medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py|src/telegram_interface/"
