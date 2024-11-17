@@ -20,10 +20,12 @@ from src.telegram_interface.find_appointments_command import (
     get_specialization,
     handle_clinic_text,
     handle_date_from_selection,
+    handle_date_to_selection,
     handle_doctor_text,
     handle_selected_clinic,
     handle_selected_doctor,
     handle_time_from_selection,
+    handle_time_to_selection,
     read_location,
     read_specialization,
 )
@@ -35,10 +37,12 @@ from src.telegram_interface.states import (
     PROVIDE_USERNAME,
     READ_CLINIC,
     READ_DATE_FROM,
+    READ_DATE_TO,
     READ_DOCTOR,
     READ_LOCATION,
     READ_SPECIALIZATION,
     READ_TIME_FROM,
+    READ_TIME_TO,
 )
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -91,6 +95,14 @@ class TelegramBot:
                 READ_TIME_FROM: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_time_from_selection),
                     CallbackQueryHandler(handle_time_from_selection),
+                ],
+                READ_DATE_TO: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_to_selection),
+                    CallbackQueryHandler(handle_date_to_selection),
+                ],
+                READ_TIME_TO: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_time_to_selection),
+                    CallbackQueryHandler(handle_time_to_selection),
                 ],
             },
             fallbacks=[],

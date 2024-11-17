@@ -15,32 +15,41 @@ from telegram import (
 from telegram.ext import ContextTypes, ConversationHandler
 
 from src.client import MedicoverClient
+from src.telegram_interface.helpers import prepare_date_keyboard, prepare_time_keyboard
 from src.telegram_interface.states import (
     GET_LOCATION,
     GET_SPECIALIZATION,
     READ_CLINIC,
     READ_DATE_FROM,
+    READ_DATE_TO,
     READ_DOCTOR,
     READ_LOCATION,
     READ_SPECIALIZATION,
     READ_TIME_FROM,
+    READ_TIME_TO,
 )
 
 logger = logging.getLogger(__name__)
+
+MINUTE_INCREMENT = 15
+HOUR_INCREMENT = 1
+MAX_MINUTES = 60
+MAX_HOURS = 24
+MAX_MONTHS = 12
 
 
 async def find_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message is None:
         return ConversationHandler.END
 
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
 
     client: MedicoverClient | None = user_data.get("medicover_client")
     if not client:
         await update.message.reply_text("Please log in first.")
         return ConversationHandler.END
 
-    await update.message.reply_text("Podaj fragment szukanego miasta")
+    await update.message.reply_text("Wpisz fragment szukanego miasta")
 
     return GET_LOCATION
 
@@ -48,7 +57,7 @@ async def find_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message is None:
         return ConversationHandler.END
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
 
     client: MedicoverClient = user_data["medicover_client"]
     location_input = update.message.text
@@ -69,7 +78,7 @@ async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def read_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
 
     query = cast(CallbackQuery, update.callback_query)
 
@@ -90,7 +99,7 @@ async def read_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 async def get_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
     update_message = cast(Message, update.message)
 
     client: MedicoverClient = user_data["medicover_client"]
@@ -115,7 +124,7 @@ async def get_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def read_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = cast(CallbackQuery, update.callback_query)
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
 
     await query.answer()
 
@@ -139,7 +148,7 @@ async def read_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def handle_clinic_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
     update_message = cast(Message, update.message)
 
     client: MedicoverClient = user_data["medicover_client"]
@@ -154,6 +163,7 @@ async def handle_clinic_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_data["clinics"] = {str(clinic["id"]): clinic for clinic in clinics}
 
         keyboard = [[InlineKeyboardButton(clinic["text"], callback_data=str(clinic["id"]))] for clinic in clinics]
+        keyboard.append([InlineKeyboardButton("Jakakolwiek", callback_data="any")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update_message.reply_text("Wybierz klinikę z listy:", reply_markup=reply_markup)
@@ -165,7 +175,7 @@ async def handle_clinic_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def handle_selected_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = cast(CallbackQuery, update.callback_query)
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
 
     await query.answer()
 
@@ -173,12 +183,12 @@ async def handle_selected_clinic(update: Update, context: ContextTypes.DEFAULT_T
     clinics = user_data.get("clinics", {})
     selected_clinic = clinics.get(clinic_id)
     if not selected_clinic:
-        selected_clinic = "jakakolwiek"
+        selected_clinic = "Jakakolwiek"
     else:
         selected_clinic = selected_clinic["text"]
         user_data["clinic_id"] = clinic_id
 
-    await query.edit_message_text(f"\u2705 Wybrano: {selected_clinic}")
+    await query.edit_message_text(f"\u2705 Wybrano klinikę: {selected_clinic}")
 
     keyboard = [[InlineKeyboardButton("Jakikolwiek", callback_data="any")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -191,7 +201,7 @@ async def handle_selected_clinic(update: Update, context: ContextTypes.DEFAULT_T
 
 async def handle_doctor_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int | None:
     update_message = cast(Message, update.message)
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
 
     client: MedicoverClient = user_data["medicover_client"]
     location_id: int = user_data["location_id"]
@@ -206,6 +216,7 @@ async def handle_doctor_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_data["doctors"] = {str(doctor["id"]): doctor for doctor in doctors}
 
         keyboard = [[InlineKeyboardButton(doctor["text"], callback_data=str(doctor["id"]))] for doctor in doctors]
+        keyboard.append([InlineKeyboardButton("Jakikolwiek", callback_data="any")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update_message.reply_text("Wybierz lekarza z listy:", reply_markup=reply_markup)
@@ -217,7 +228,7 @@ async def handle_doctor_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def handle_selected_doctor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = cast(CallbackQuery, update.callback_query)
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
 
     await query.answer()
 
@@ -232,6 +243,12 @@ async def handle_selected_doctor(update: Update, context: ContextTypes.DEFAULT_T
 
     await query.edit_message_text(f"\u2705 Wybrano lekarza: {selected_doctor}")
 
+    await prepare_date_from_selection(user_data, query)
+
+    return READ_DATE_FROM
+
+
+async def prepare_date_from_selection(user_data: dict[str, Any], query: CallbackQuery) -> None:
     day = date.today().day
     month = date.today().month
     year = date.today().year
@@ -240,148 +257,75 @@ async def handle_selected_doctor(update: Update, context: ContextTypes.DEFAULT_T
     user_data["selected_from_month"] = month
     user_data["selected_from_year"] = year
 
-    keyboard = [
-        [
-            InlineKeyboardButton("↑", callback_data="day_up"),
-            InlineKeyboardButton("↑", callback_data="month_up"),
-            InlineKeyboardButton("↑", callback_data="year_up"),
-        ],
-        [
-            InlineKeyboardButton(f"{day:02d}", callback_data="ignore"),
-            InlineKeyboardButton(f"{month:02d}", callback_data="ignore"),
-            InlineKeyboardButton(f"{year}", callback_data="ignore"),
-        ],
-        [
-            InlineKeyboardButton("↓", callback_data="day_down"),
-            InlineKeyboardButton("↓", callback_data="month_down"),
-            InlineKeyboardButton("↓", callback_data="year_down"),
-        ],
-        [
-            InlineKeyboardButton("Done", callback_data="date_done"),
-        ],
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = prepare_date_keyboard(day, month, year)
 
     query_message = cast(Message, query.message)
-    await query_message.reply_text(
-        "Wybierz datę albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
-    )
-
-    return READ_DATE_FROM
+    try:
+        await query_message.reply_text(
+            "Wybierz datę od albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+        )
+    except telegram.error.BadRequest:
+        pass
 
 
 async def update_date_from_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
     query = cast(CallbackQuery, update.callback_query)
 
     day = user_data["selected_from_day"]
     month = user_data["selected_from_month"]
     year = user_data["selected_from_year"]
 
-    keyboard = [
-        [
-            InlineKeyboardButton("↑", callback_data="day_up"),
-            InlineKeyboardButton("↑", callback_data="month_up"),
-            InlineKeyboardButton("↑", callback_data="year_up"),
-        ],
-        [
-            InlineKeyboardButton(f"{day:02d}", callback_data="ignore"),
-            InlineKeyboardButton(f"{month:02d}", callback_data="ignore"),
-            InlineKeyboardButton(f"{year}", callback_data="ignore"),
-        ],
-        [
-            InlineKeyboardButton("↓", callback_data="day_down"),
-            InlineKeyboardButton("↓", callback_data="month_down"),
-            InlineKeyboardButton("↓", callback_data="year_down"),
-        ],
-        [
-            InlineKeyboardButton("Done", callback_data="date_done"),
-        ],
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = prepare_date_keyboard(day, month, year)
 
     try:
         await query.edit_message_text(
-            "Wybierz datę albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024:", reply_markup=reply_markup
+            "Wybierz datę od albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
         )
     except telegram.error.BadRequest:
-        return None
-
-
-async def prepare_time_from_selection(user_data: dict[str, Any]) -> InlineKeyboardMarkup:
-    selected_hour = 7
-    selected_minute = 0
-
-    user_data["selected_from_hour"] = selected_hour
-    user_data["selected_from_minute"] = selected_minute
-
-    keyboard = [
-        [
-            InlineKeyboardButton("↑", callback_data="hour_up"),
-            InlineKeyboardButton("↑", callback_data="minute_up"),
-        ],
-        [
-            InlineKeyboardButton(f"{selected_hour:02d}", callback_data="ignore"),
-            InlineKeyboardButton(f"{selected_minute:02d}", callback_data="ignore"),
-        ],
-        [
-            InlineKeyboardButton("↓", callback_data="hour_down"),
-            InlineKeyboardButton("↓", callback_data="minute_down"),
-        ],
-        [
-            InlineKeyboardButton("Done", callback_data="time_done"),
-        ],
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    return reply_markup
+        pass
 
 
 async def handle_date_from_selection_with_buttons(
-    user_data: dict[str, Any], query: CallbackQuery, data: str
+    data: str, user_data: dict[str, Any], query: CallbackQuery
 ) -> int | None:
+    def adjust_day(user_data: dict[str, Any], increment: int) -> None:
+        day = user_data["selected_from_day"]
+        month = user_data["selected_from_month"]
+        year = user_data["selected_from_year"]
+        max_day = monthrange(year, month)[1]
+        day = max(1, min(day + increment, max_day))
+        user_data["selected_from_day"] = day
+
+    def adjust_month(user_data: dict[str, Any], increment: int) -> None:
+        month = user_data["selected_from_month"]
+        month += increment
+        if month > MAX_MONTHS:
+            month = 1
+        elif month < 1:
+            month = 12
+        user_data["selected_from_month"] = month
+        adjust_day(user_data, 0)
+
+    def adjust_year(user_data: dict[str, Any], increment: int) -> None:
+        year = user_data["selected_from_year"]
+        year += increment
+        if year >= datetime.now().year or increment > 0:
+            user_data["selected_from_year"] = year
+            adjust_day(user_data, 0)
+
     if data == "day_up":
-        selected_day = user_data["selected_from_day"]
-        selected_month = user_data["selected_from_month"]
-        selected_year = user_data["selected_from_year"]
-        selected_day = min(selected_day + 1, monthrange(selected_year, selected_month)[1])
-        user_data["selected_from_day"] = selected_day
+        adjust_day(user_data, 1)
     elif data == "day_down":
-        selected_day = user_data["selected_from_day"]
-        selected_day = max(selected_day - 1, 1)
-        user_data["selected_from_day"] = selected_day
+        adjust_day(user_data, -1)
     elif data == "month_up":
-        selected_month = user_data["selected_from_month"]
-        selected_month = min(selected_month + 1, 12)
-        selected_day = user_data["selected_from_day"]
-        selected_day = min(selected_day, monthrange(user_data["selected_from_year"], selected_month)[1])
-        user_data["selected_from_month"] = selected_month
-        user_data["selected_from_day"] = selected_day
+        adjust_month(user_data, 1)
     elif data == "month_down":
-        selected_month = user_data["selected_from_month"]
-        selected_month = max(selected_month - 1, 1)
-        selected_day = user_data["selected_from_day"]
-        selected_day = min(selected_day, monthrange(user_data["selected_from_year"], selected_month)[1])
-        user_data["selected_from_month"] = selected_month
-        user_data["selected_from_day"] = selected_day
+        adjust_month(user_data, -1)
     elif data == "year_up":
-        selected_year = user_data["selected_from_year"]
-        selected_year += 1
-        selected_day = user_data["selected_from_day"]
-        selected_day = min(selected_day, monthrange(selected_year, user_data["selected_from_month"])[1])
-        user_data["selected_from_year"] = selected_year
-        user_data["selected_from_day"] = selected_day
+        adjust_year(user_data, 1)
     elif data == "year_down":
-        selected_year = user_data["selected_from_year"]
-        if selected_year > datetime.now().year:
-            selected_year -= 1
-            selected_day = user_data["selected_from_day"]
-            selected_day = min(selected_day, monthrange(selected_year, user_data["selected_from_month"])[1])
-            user_data["selected_from_year"] = selected_year
-            user_data["selected_from_day"] = selected_day
+        adjust_year(user_data, -1)
     elif data == "date_done":
         selected_day = user_data["selected_from_day"]
         selected_month = user_data["selected_from_month"]
@@ -390,12 +334,8 @@ async def handle_date_from_selection_with_buttons(
 
         await query.edit_message_text(f"\u2705 Wybrano datę od: {selected_date}")
 
-        reply_markup = await prepare_time_from_selection(user_data)
-
         query_message = cast(Message, query.message)
-        await query_message.reply_text(
-            "Wybierz godzinę albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
-        )
+        await prepare_time_from_selection(user_data, query_message)
 
         return READ_TIME_FROM
 
@@ -403,7 +343,7 @@ async def handle_date_from_selection_with_buttons(
 
 
 async def handle_date_from_selection_with_text(
-    update_message: Message, data: str, user_data: dict[str, Any]
+    data: str, user_data: dict[str, Any], update_message: Message
 ) -> int | None:
     try:
         date = datetime.strptime(data, "%d-%m-%Y")
@@ -413,33 +353,30 @@ async def handle_date_from_selection_with_text(
 
         await update_message.reply_text(f"\u2705 Wybrano datę od: {data}")
 
-        reply_markup = await prepare_time_from_selection(user_data)
+        await prepare_time_from_selection(user_data, update_message)
 
-        await update_message.reply_text(
-            "Wybierz godzinę albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
-        )
         return READ_TIME_FROM
     except ValueError:
-        await update_message.reply_text("Invalid date format. Please use DD-MM-YYYY.")
+        await update_message.reply_text("Niepoprawny format daty. Podaj datę w formacie dd-mm-rrrr.")
         return None
 
 
 async def handle_date_from_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data = cast(dict[Any, Any], context.user_data)
+    user_data = cast(dict[str, Any], context.user_data)
 
     if update.callback_query:
         query = update.callback_query
         await query.answer()
         data = cast(str, query.data)
 
-        return_view = await handle_date_from_selection_with_buttons(user_data, query, data)
+        return_view = await handle_date_from_selection_with_buttons(data, user_data, query)
         if return_view is not None:
             return return_view
     else:
         update_message = cast(Message, update.message)
         data = cast(str, update_message.text)
 
-        return_view = await handle_date_from_selection_with_text(update_message, data, user_data)
+        return_view = await handle_date_from_selection_with_text(data, user_data, update_message)
         if return_view is not None:
             return return_view
 
@@ -448,60 +385,67 @@ async def handle_date_from_selection(update: Update, context: ContextTypes.DEFAU
     return READ_DATE_FROM
 
 
+async def prepare_time_from_selection(user_data: dict[str, Any], query_message: Message) -> None:
+    hour = 7
+    minute = 0
+
+    user_data["selected_from_hour"] = hour
+    user_data["selected_from_minute"] = minute
+
+    reply_markup = prepare_time_keyboard(hour, minute)
+
+    try:
+        await query_message.reply_text(
+            "Wybierz godzinę od albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
+        )
+    except telegram.error.BadRequest:
+        pass
+
+
 async def update_time_from_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_data = cast(dict[str, Any], context.user_data)
     query = cast(CallbackQuery, update.callback_query)
 
-    selected_hour = user_data["selected_from_hour"]
-    selected_minute = user_data["selected_from_minute"]
+    hour = user_data["selected_from_hour"]
+    minute = user_data["selected_from_minute"]
 
-    keyboard = [
-        [
-            InlineKeyboardButton("↑", callback_data="hour_up"),
-            InlineKeyboardButton("↑", callback_data="minute_up"),
-        ],
-        [
-            InlineKeyboardButton(f"{selected_hour:02d}", callback_data="ignore"),
-            InlineKeyboardButton(f"{selected_minute:02d}", callback_data="ignore"),
-        ],
-        [
-            InlineKeyboardButton("↓", callback_data="hour_down"),
-            InlineKeyboardButton("↓", callback_data="minute_down"),
-        ],
-        [
-            InlineKeyboardButton("Done", callback_data="time_done"),
-        ],
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = prepare_time_keyboard(hour, minute)
 
     try:
         await query.edit_message_text(
-            "Wybierz godzinę albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
+            "Wybierz godzinę od albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
         )
     except telegram.error.BadRequest:
-        return None
+        pass
 
 
 async def handle_time_from_selection_with_buttons(
-    user_data: dict[str, Any], query: CallbackQuery, data: str
+    data: str, user_data: dict[str, Any], query: CallbackQuery
 ) -> int | None:
     if data == "minute_up":
-        selected_minute = user_data["selected_from_minute"]
-        selected_minute = min(selected_minute + 15, 59)
-        user_data["selected_from_minute"] = selected_minute
+        minute = user_data["selected_from_minute"]
+        minute += 15
+        if minute >= MAX_MINUTES:
+            minute = 0
+        user_data["selected_from_minute"] = minute
     elif data == "minute_down":
-        selected_minute = user_data["selected_from_minute"]
-        selected_minute = max(selected_minute - 15, 0)
-        user_data["selected_from_minute"] = selected_minute
+        minute = user_data["selected_from_minute"]
+        minute -= 15
+        if minute < 0:
+            minute = 45
+        user_data["selected_from_minute"] = minute
     elif data == "hour_up":
-        selected_hour = user_data["selected_from_hour"]
-        selected_hour = min(selected_hour + 1, 23)
-        user_data["selected_from_hour"] = selected_hour
+        hour = user_data["selected_from_hour"]
+        hour += 1
+        if hour >= MAX_HOURS:
+            hour = 0
+        user_data["selected_from_hour"] = hour
     elif data == "hour_down":
-        selected_hour = user_data["selected_from_hour"]
-        selected_hour = max(selected_hour - 1, 0)
-        user_data["selected_from_hour"] = selected_hour
+        hour = user_data["selected_from_hour"]
+        hour -= 1
+        if hour < 0:
+            hour = 23
+        user_data["selected_from_hour"] = hour
     elif data == "time_done":
         selected_hour = user_data["selected_from_hour"]
         selected_minute = user_data["selected_from_minute"]
@@ -509,15 +453,15 @@ async def handle_time_from_selection_with_buttons(
 
         await query.edit_message_text(f"\u2705 Wybrano godzinę od: {selected_time}")
 
-        # TODO: Add next steps
+        await prepare_date_to_selection(user_data, query)
 
-        return ConversationHandler.END
+        return READ_DATE_TO
 
     return None
 
 
 async def handle_time_from_selection_with_text(
-    update_message: Message, data: str, user_data: dict[str, Any]
+    data: str, user_data: dict[str, Any], update_message: Message
 ) -> int | None:
     try:
         time = datetime.strptime(data, "%H:%M")
@@ -526,11 +470,11 @@ async def handle_time_from_selection_with_text(
 
         await update_message.reply_text(f"\u2705 Wybrano godzinę od: {data}")
 
-        # TODO: Add next steps
+        await prepare_time_to_selection(user_data, update_message)
 
-        return ConversationHandler.END
+        return READ_DATE_TO
     except ValueError:
-        await update_message.reply_text("Invalid time format. Please use HH:MM.")
+        await update_message.reply_text("Niepoprawny format godziny. Podaj godzinę w formacie HH:MM.")
         return None
 
 
@@ -542,17 +486,270 @@ async def handle_time_from_selection(update: Update, context: ContextTypes.DEFAU
         await query.answer()
         data = cast(str, query.data)
 
-        return_view = await handle_time_from_selection_with_buttons(user_data, query, data)
+        return_view = await handle_time_from_selection_with_buttons(data, user_data, query)
         if return_view is not None:
             return return_view
     else:
         update_message = cast(Message, update.message)
         data = cast(str, update_message.text)
 
-        return_view = await handle_time_from_selection_with_text(update_message, data, user_data)
+        return_view = await handle_time_from_selection_with_text(data, user_data, update_message)
         if return_view is not None:
             return return_view
 
     await update_time_from_selection(update, context)
 
     return READ_TIME_FROM
+
+
+async def prepare_date_to_selection(user_data: dict[str, Any], query: CallbackQuery) -> None:
+    day = date.today().day
+    month = date.today().month
+    year = date.today().year
+
+    user_data["selected_to_day"] = day
+    user_data["selected_to_month"] = month
+    user_data["selected_to_year"] = year
+
+    reply_markup = prepare_date_keyboard(day, month, year)
+
+    query_message = cast(Message, query.message)
+    try:
+        await query_message.reply_text(
+            "Wybierz datę do albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+        )
+    except telegram.error.BadRequest:
+        pass
+
+
+async def update_date_to_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_data = cast(dict[str, Any], context.user_data)
+    query = cast(CallbackQuery, update.callback_query)
+
+    day = user_data["selected_to_day"]
+    month = user_data["selected_to_month"]
+    year = user_data["selected_to_year"]
+
+    reply_markup = prepare_date_keyboard(day, month, year)
+
+    try:
+        await query.edit_message_text(
+            "Wybierz datę do albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+        )
+    except telegram.error.BadRequest:
+        pass
+
+
+async def handle_date_to_selection_with_buttons(
+    user_data: dict[str, Any], query: CallbackQuery, data: str
+) -> int | None:
+    def adjust_day(user_data: dict[str, Any], increment: int) -> None:
+        day = user_data["selected_to_day"]
+        month = user_data["selected_to_month"]
+        year = user_data["selected_to_year"]
+        max_day = monthrange(year, month)[1]
+        day = max(1, min(day + increment, max_day))
+        user_data["selected_to_day"] = day
+
+    def adjust_month(user_data: dict[str, Any], increment: int) -> None:
+        month = user_data["selected_to_month"]
+        month += increment
+        if month > MAX_MONTHS:
+            month = 1
+        elif month < 1:
+            month = 12
+        user_data["selected_to_month"] = month
+        adjust_day(user_data, 0)
+
+    def adjust_year(user_data: dict[str, Any], increment: int) -> None:
+        year = user_data["selected_to_year"]
+        year += increment
+        if year >= datetime.now().year or increment > 0:
+            user_data["selected_to_year"] = year
+            adjust_day(user_data, 0)
+
+    if data == "day_up":
+        adjust_day(user_data, 1)
+    elif data == "day_down":
+        adjust_day(user_data, -1)
+    elif data == "month_up":
+        adjust_month(user_data, 1)
+    elif data == "month_down":
+        adjust_month(user_data, -1)
+    elif data == "year_up":
+        adjust_year(user_data, 1)
+    elif data == "year_down":
+        adjust_year(user_data, -1)
+    elif data == "date_done":
+        selected_day = user_data["selected_to_day"]
+        selected_month = user_data["selected_to_month"]
+        selected_year = user_data["selected_to_year"]
+        selected_date = f"{selected_day:02d}-{selected_month:02d}-{selected_year}"
+
+        await query.edit_message_text(f"\u2705 Wybrano datę do: {selected_date}")
+
+        query_message = cast(Message, query.message)
+        await prepare_time_to_selection(user_data, query_message)
+
+        return READ_TIME_TO
+
+    return None
+
+
+async def handle_date_to_selection_with_text(
+    update_message: Message, data: str, user_data: dict[str, Any]
+) -> int | None:
+    try:
+        date = datetime.strptime(data, "%d-%m-%Y")
+        user_data["selected_to_day"] = date.day
+        user_data["selected_to_month"] = date.month
+        user_data["selected_to_year"] = date.year
+
+        await update_message.reply_text(f"\u2705 Wybrano datę do: {data}")
+
+        await prepare_time_to_selection(user_data, update_message)
+
+        return READ_TIME_FROM
+    except ValueError:
+        await update_message.reply_text("Niepoprawny format daty. Podaj datę w formacie dd-mm-rrrr.")
+        return None
+
+
+async def handle_date_to_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data = cast(dict[str, Any], context.user_data)
+
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        data = cast(str, query.data)
+
+        return_view = await handle_date_to_selection_with_buttons(user_data, query, data)
+        if return_view is not None:
+            return return_view
+    else:
+        update_message = cast(Message, update.message)
+        data = cast(str, update_message.text)
+
+        return_view = await handle_date_to_selection_with_text(update_message, data, user_data)
+        if return_view is not None:
+            return return_view
+
+    await update_date_to_selection(update, context)
+
+    return READ_DATE_TO
+
+
+async def prepare_time_to_selection(user_data: dict[str, Any], update_message: Message) -> None:
+    hour = 23
+    minute = 0
+
+    user_data["selected_to_hour"] = hour
+    user_data["selected_to_minute"] = minute
+
+    reply_markup = prepare_time_keyboard(hour, minute)
+
+    try:
+        await update_message.reply_text(
+            "Wybierz godzinę do albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
+        )
+    except telegram.error.BadRequest:
+        pass
+
+
+async def update_time_to_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_data = cast(dict[str, Any], context.user_data)
+    query = cast(CallbackQuery, update.callback_query)
+
+    hour = user_data["selected_to_hour"]
+    minute = user_data["selected_to_minute"]
+
+    reply_markup = prepare_time_keyboard(hour, minute)
+
+    try:
+        await query.edit_message_text(
+            "Wybierz godzinę do albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
+        )
+    except telegram.error.BadRequest:
+        pass
+
+
+async def handle_time_to_selection_with_buttons(
+    user_data: dict[str, Any], query: CallbackQuery, data: str
+) -> int | None:
+    if data == "minute_up":
+        minute = user_data["selected_to_minute"]
+        minute += 15
+        if minute >= MAX_MINUTES:
+            minute = 0
+        user_data["selected_to_minute"] = minute
+    elif data == "minute_down":
+        minute = user_data["selected_to_minute"]
+        minute -= 15
+        if minute < 0:
+            minute = 45
+        user_data["selected_to_minute"] = minute
+    elif data == "hour_up":
+        hour = user_data["selected_to_hour"]
+        hour += 1
+        if hour >= MAX_HOURS:
+            hour = 0
+        user_data["selected_to_hour"] = hour
+    elif data == "hour_down":
+        hour = user_data["selected_to_hour"]
+        hour -= 1
+        if hour < 0:
+            hour = 23
+        user_data["selected_to_hour"] = hour
+    elif data == "time_done":
+        selected_hour = user_data["selected_to_hour"]
+        selected_minute = user_data["selected_to_minute"]
+        selected_time = f"{selected_hour:02d}:{selected_minute:02d}"
+
+        await query.edit_message_text(f"\u2705 Wybrano godzinę do: {selected_time}")
+
+        # TODO: add next step
+
+        return ConversationHandler.END
+
+    return None
+
+
+async def handle_time_to_selection_with_text(
+    update_message: Message, data: str, user_data: dict[str, Any]
+) -> int | None:
+    try:
+        time = datetime.strptime(data, "%H:%M")
+        user_data["selected_to_hour"] = time.hour
+        user_data["selected_to_minute"] = time.minute
+
+        await update_message.reply_text(f"\u2705 Wybrano godzinę do: {data}")
+
+        # TODO: add next step
+        return ConversationHandler.END
+    except ValueError:
+        await update_message.reply_text("Niepoprawny format godziny. Podaj godzinę w formacie HH:MM.")
+        return None
+
+
+async def handle_time_to_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data = cast(dict[str, Any], context.user_data)
+
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        data = cast(str, query.data)
+
+        return_view = await handle_time_to_selection_with_buttons(user_data, query, data)
+        if return_view is not None:
+            return return_view
+    else:
+        update_message = cast(Message, update.message)
+        data = cast(str, update_message.text)
+
+        return_view = await handle_time_to_selection_with_text(update_message, data, user_data)
+        if return_view is not None:
+            return return_view
+
+    await update_time_to_selection(update, context)
+
+    return READ_TIME_TO
