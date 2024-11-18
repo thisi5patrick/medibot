@@ -1,4 +1,3 @@
-import json
 import logging
 from calendar import monthrange
 from datetime import date, datetime
@@ -27,6 +26,7 @@ from src.telegram_interface.states import (
     READ_SPECIALIZATION,
     READ_TIME_FROM,
     READ_TIME_TO,
+    VERIFY_SUMMARY,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     if locations:
         user_data["locations"] = {str(loc["id"]): loc for loc in locations}
 
-        keyboard = [[InlineKeyboardButton(loc["text"], callback_data=json.dumps(loc))] for loc in locations]
+        keyboard = [[InlineKeyboardButton(loc["text"], callback_data=str(loc["id"]))] for loc in locations]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update.message.reply_text("Wybierz miasto z listy:", reply_markup=reply_markup)
@@ -84,9 +84,11 @@ async def read_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     await query.answer()
 
-    data = json.loads(cast(str, query.data))
-    location_id = data["id"]
-    location_text = data["text"]
+    location_id = query.data
+    locations = user_data.get("locations", {})
+    selected_location = locations.get(location_id)
+
+    location_text = selected_location["text"]
 
     user_data["location_id"] = location_id
     await query.edit_message_text(f"\u2705 Wybrano miasto: {location_text}")
@@ -346,10 +348,10 @@ async def handle_date_from_selection_with_text(
     data: str, user_data: dict[str, Any], update_message: Message
 ) -> int | None:
     try:
-        date = datetime.strptime(data, "%d-%m-%Y")
-        user_data["selected_from_day"] = date.day
-        user_data["selected_from_month"] = date.month
-        user_data["selected_from_year"] = date.year
+        date_ = datetime.strptime(data, "%d-%m-%Y")
+        user_data["selected_from_day"] = date_.day
+        user_data["selected_from_month"] = date_.month
+        user_data["selected_from_year"] = date_.year
 
         await update_message.reply_text(f"\u2705 Wybrano datę od: {data}")
 
@@ -396,7 +398,7 @@ async def prepare_time_from_selection(user_data: dict[str, Any], query_message: 
 
     try:
         await query_message.reply_text(
-            "Wybierz godzinę od albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
+            "Szukaj terminów po godzinie albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
         )
     except telegram.error.BadRequest:
         pass
@@ -413,7 +415,7 @@ async def update_time_from_selection(update: Update, context: ContextTypes.DEFAU
 
     try:
         await query.edit_message_text(
-            "Wybierz godzinę od albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
+            "Szukaj terminów po godzinie albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
         )
     except telegram.error.BadRequest:
         pass
@@ -451,7 +453,7 @@ async def handle_time_from_selection_with_buttons(
         selected_minute = user_data["selected_from_minute"]
         selected_time = f"{selected_hour:02d}:{selected_minute:02d}"
 
-        await query.edit_message_text(f"\u2705 Wybrano godzinę od: {selected_time}")
+        await query.edit_message_text(f"\u2705 Terminy po godzinie: {selected_time}")
 
         await prepare_date_to_selection(user_data, query)
 
@@ -650,7 +652,7 @@ async def prepare_time_to_selection(user_data: dict[str, Any], update_message: M
 
     try:
         await update_message.reply_text(
-            "Wybierz godzinę do albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
+            "Szukaj terminów przed godziną albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
         )
     except telegram.error.BadRequest:
         pass
@@ -667,7 +669,7 @@ async def update_time_to_selection(update: Update, context: ContextTypes.DEFAULT
 
     try:
         await query.edit_message_text(
-            "Wybierz godzinę do albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
+            "Szukaj terminów przed godziną albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
         )
     except telegram.error.BadRequest:
         pass
@@ -707,9 +709,10 @@ async def handle_time_to_selection_with_buttons(
 
         await query.edit_message_text(f"\u2705 Wybrano godzinę do: {selected_time}")
 
-        # TODO: add next step
+        query_message = cast(Message, query.message)
+        await prepare_summary(user_data, query_message)
 
-        return ConversationHandler.END
+        return VERIFY_SUMMARY
 
     return None
 
@@ -724,8 +727,9 @@ async def handle_time_to_selection_with_text(
 
         await update_message.reply_text(f"\u2705 Wybrano godzinę do: {data}")
 
-        # TODO: add next step
-        return ConversationHandler.END
+        await prepare_summary(user_data, update_message)
+
+        return VERIFY_SUMMARY
     except ValueError:
         await update_message.reply_text("Niepoprawny format godziny. Podaj godzinę w formacie HH:MM.")
         return None
@@ -753,3 +757,151 @@ async def handle_time_to_selection(update: Update, context: ContextTypes.DEFAULT
     await update_time_to_selection(update, context)
 
     return READ_TIME_TO
+
+
+async def prepare_summary(user_data: dict[str, Any], update_message: Message) -> int:
+    all_locations = user_data["locations"]
+    location_id = user_data["location_id"]
+    location = all_locations[location_id]
+
+    all_specializations = user_data["specializations"]
+    specialization_id = user_data.get("specialization_id")
+    specialization = all_specializations[specialization_id]
+
+    all_clinics = user_data.get("clinics")
+    if all_clinics:
+        clinic_id = user_data["clinic_id"]
+        clinic = all_clinics[clinic_id]
+    else:
+        clinic = {"id": "any", "text": "Jakakolwiek"}
+
+    all_doctors = user_data.get("doctors")
+    if all_doctors:
+        doctor_id = user_data["doctor_id"]
+        doctor = all_doctors[doctor_id]
+    else:
+        doctor = {"id": "any", "text": "Jakikolwiek"}
+
+    selected_from_day = user_data["selected_from_day"]
+    selected_from_month = user_data["selected_from_month"]
+    selected_from_year = user_data["selected_from_year"]
+    selected_from_date = f"{selected_from_day:02d}-{selected_from_month:02d}-{selected_from_year}"
+
+    selected_from_hour = user_data["selected_from_hour"]
+    selected_from_minute = user_data["selected_from_minute"]
+    selected_from_time = f"{selected_from_hour:02d}:{selected_from_minute:02d}"
+
+    selected_to_day = user_data["selected_to_day"]
+    selected_to_month = user_data["selected_to_month"]
+    selected_to_year = user_data["selected_to_year"]
+    selected_to_date = f"{selected_to_day:02d}-{selected_to_month:02d}-{selected_to_year}"
+
+    selected_to_hour = user_data["selected_to_hour"]
+    selected_to_minute = user_data["selected_to_minute"]
+    selected_to_time = f"{selected_to_hour:02d}:{selected_to_minute:02d}"
+
+    keyboard = [
+        [InlineKeyboardButton("Tak", callback_data="yes")],
+        [InlineKeyboardButton("Nie", callback_data="no")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    summary_text = "Podsumowanie:\n"
+    summary_text += f"Klinika: {location['text']}\n"
+    summary_text += f"Specjalizacja: {specialization['text']}\n"
+    summary_text += f"Klinika: {clinic['text']}\n"
+    summary_text += f"Doktor: {doctor['text']}\n"
+    summary_text += f"Data od: {selected_from_date}\n"
+    summary_text += f"Od: {selected_from_time}\n"
+    summary_text += f"Data do: {selected_to_date}\n"
+    summary_text += f"Do: {selected_to_time}"
+
+    await update_message.reply_text(
+        f"\u2754 {summary_text}\nPodsumowanie jest prawidłowe?",
+        reply_markup=reply_markup,
+    )
+
+    user_data["summary_text"] = summary_text
+
+    return VERIFY_SUMMARY
+
+
+async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = cast(CallbackQuery, update.callback_query)
+    query_message = cast(Message, query.message)
+    user_data = cast(dict[str, Any], context.user_data)
+
+    await query.answer()
+    data = cast(str, query.data)
+
+    if data == "yes":
+        await query.edit_message_text(f"\u2705 {user_data['summary_text']}")
+
+        client: MedicoverClient = user_data["medicover_client"]
+        location_id: int = user_data["location_id"]
+        specialization_id: int = user_data["specialization_id"]
+        doctor_id: int | None = user_data.get("doctor_id")
+        clinic_id: int | None = user_data.get("clinic_id")
+
+        selected_from_day = user_data["selected_from_day"]
+        selected_from_month = user_data["selected_from_month"]
+        selected_from_year = user_data["selected_from_year"]
+        selected_from_date = f"{selected_from_day:02d}-{selected_from_month:02d}-{selected_from_year}"
+
+        selected_from_hour = user_data["selected_from_hour"]
+        selected_from_minute = user_data["selected_from_minute"]
+        selected_from_time = f"{selected_from_hour:02d}:{selected_from_minute:02d}"
+
+        selected_to_day = user_data["selected_to_day"]
+        selected_to_month = user_data["selected_to_month"]
+        selected_to_year = user_data["selected_to_year"]
+
+        selected_to_hour = user_data["selected_to_hour"]
+        selected_to_minute = user_data["selected_to_minute"]
+        selected_to_time = f"{selected_to_hour:02d}:{selected_to_minute:02d}"
+
+        available_slots = client.get_available_slots(
+            location_id,
+            specialization_id,
+            doctor_id,
+            clinic_id,
+            from_date=selected_from_date,
+            from_time=selected_from_time,
+            to_time=selected_to_time,
+        )
+
+        parsed_available_slot = []
+        to_date = datetime(selected_to_year, selected_to_month, selected_to_day, selected_to_hour, selected_to_minute)
+        for slot in available_slots:
+            appointment_date = datetime.fromisoformat(slot["appointmentDate"])
+            if appointment_date < to_date:
+                parsed_available_slot.append(slot)
+
+        if not parsed_available_slot:
+            await query_message.reply_text("Brak dostępnych terminów")
+
+            keyboard = [
+                [InlineKeyboardButton("Tak", callback_data="yes")],
+                [InlineKeyboardButton("Nie", callback_data="no")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await query_message.reply_text("\u2754 Czy chcesz utworzyć monitoring?", reply_markup=reply_markup)
+
+            # TODO add monitoring job
+            return ConversationHandler.END
+
+        await query_message.reply_text("Dostępne terminy:")
+
+        for slot in parsed_available_slot:
+            await query_message.reply_text(
+                f"Lekarz: {slot['doctorName']}\nKlinika: {slot['clinicName']}\nData: {slot['appointmentDate']}"
+            )
+
+        # TODO add reserve slot
+        return ConversationHandler.END
+
+    await query_message.reply_text("Zacznijmy od poczatku")
+
+    # TODO fix this -> it's not running correctly
+    return await find_appointments(update, context)

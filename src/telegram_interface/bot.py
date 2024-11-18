@@ -28,6 +28,7 @@ from src.telegram_interface.find_appointments_command import (
     handle_time_to_selection,
     read_location,
     read_specialization,
+    verify_summary,
 )
 from src.telegram_interface.login_command import login, password, username
 from src.telegram_interface.states import (
@@ -43,6 +44,7 @@ from src.telegram_interface.states import (
     READ_SPECIALIZATION,
     READ_TIME_FROM,
     READ_TIME_TO,
+    VERIFY_SUMMARY,
 )
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -103,6 +105,9 @@ class TelegramBot:
                 READ_TIME_TO: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_time_to_selection),
                     CallbackQueryHandler(handle_time_to_selection),
+                ],
+                VERIFY_SUMMARY: [
+                    CallbackQueryHandler(verify_summary),
                 ],
             },
             fallbacks=[],
