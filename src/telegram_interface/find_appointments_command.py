@@ -61,7 +61,7 @@ async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     client: MedicoverClient = user_data["medicover_client"]
     location_input = update.message.text
-    locations = client.get_region(location_input)
+    locations = await client.get_region(location_input)
 
     if locations:
         user_data["locations"] = {str(loc["id"]): loc for loc in locations}
@@ -107,7 +107,7 @@ async def get_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE)
     client: MedicoverClient = user_data["medicover_client"]
     specialization_input = update_message.text
 
-    specializations = client.get_specialization(cast(str, specialization_input), user_data["location_id"])
+    specializations = await client.get_specialization(cast(str, specialization_input), user_data["location_id"])
 
     if specializations:
         user_data["specializations"] = {str(spec["id"]): spec for spec in specializations}
@@ -159,7 +159,7 @@ async def handle_clinic_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     user_input = cast(str, update_message.text)
 
-    clinics = client.get_clinic(user_input, location_id, specialization_id)
+    clinics = await client.get_clinic(user_input, location_id, specialization_id)
 
     if clinics:
         user_data["clinics"] = {str(clinic["id"]): clinic for clinic in clinics}
@@ -212,7 +212,7 @@ async def handle_doctor_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     user_input = cast(str, update_message.text)
 
-    doctors = client.get_doctor(user_input, location_id, specialization_id, clinic_id)
+    doctors = await client.get_doctor(user_input, location_id, specialization_id, clinic_id)
 
     if doctors:
         user_data["doctors"] = {str(doctor["id"]): doctor for doctor in doctors}
@@ -860,7 +860,7 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         selected_to_minute = user_data["selected_to_minute"]
         selected_to_time = f"{selected_to_hour:02d}:{selected_to_minute:02d}"
 
-        available_slots = client.get_available_slots(
+        available_slots = await client.get_available_slots(
             location_id,
             specialization_id,
             doctor_id,

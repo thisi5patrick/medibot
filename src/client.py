@@ -1,12 +1,12 @@
+import asyncio
 import logging
-import time
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, TypedDict, TypeVar, cast
+from typing import Any, Awaitable, Callable, TypedDict, TypeVar, cast
 
 import httpx
 from bs4 import BeautifulSoup
-from httpx import Client, Cookies, Headers
+from httpx import AsyncClient, Cookies, Headers
 from pick import pick
 
 from src.api_urls import APPOINTMENTS, AVAILABLE_SLOTS, BASE_OAUTH_URL, BASE_URL, FILTERS, REGIONS
@@ -27,23 +27,23 @@ R = TypeVar("R")
 MAX_RETRY_ATTEMPTS = 3
 
 
-def with_login_retry(func: Callable[..., R]) -> Callable[..., R]:
+def with_login_retry(func: Callable[..., Awaitable[R]]) -> Callable[..., Awaitable[R]]:
     @wraps(func)
-    def wrapper(self: "MedicoverClient", *args: Any, **kwargs: Any) -> R:
+    async def wrapper(self: "MedicoverClient", *args: Any, **kwargs: Any) -> R:
         attempts = 0
 
         while attempts < MAX_RETRY_ATTEMPTS:
             if self.sign_in_cookie is None:
                 logger.warning("Attempt %s to sign in.", attempts + 1)
-                self.log_in()
+                await self.log_in()
 
             try:
-                return func(self, *args, **kwargs)
+                return await func(self, *args, **kwargs)
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == httpx.codes.UNAUTHORIZED:
                     self.sign_in_cookie = None
                     logger.warning("Received 401 Unauthorized. Attempt %s to re-authenticate.", attempts + 1)
-                    self.log_in()
+                    await self.log_in()
                 else:
                     raise
             finally:
@@ -60,12 +60,12 @@ class MedicoverClient:
         self.password = password
         self.sign_in_cookie: None | str = None
 
-    def log_in(self) -> None:
-        with Client() as client:
-            response = client.get(BASE_URL + "/Users/Account/LogOn?ReturnUrl=%2F", follow_redirects=True)
+    async def log_in(self) -> None:
+        async with AsyncClient() as client:
+            response = await client.get(BASE_URL + "/Users/Account/LogOn?ReturnUrl=%2F", follow_redirects=True)
             signin_hash = response.url.params.get("signin")
 
-            response = client.get(
+            response = await client.get(
                 f"{BASE_OAUTH_URL}/external",
                 params={
                     "provider": "IS3",
@@ -80,7 +80,7 @@ class MedicoverClient:
 
             data = self.extract_data_from_login_form(response.text)
 
-            response = client.post(
+            response = await client.post(
                 login_url,
                 data=data,
                 follow_redirects=True,
@@ -91,7 +91,7 @@ class MedicoverClient:
             if not data:
                 raise ValueError("Login failed")
 
-            response = client.post(
+            response = await client.post(
                 f"{BASE_OAUTH_URL}/signin-oidc",
                 data=data,
                 follow_redirects=True,
@@ -99,21 +99,21 @@ class MedicoverClient:
 
             data = self.form_to_dict(response.text)
 
-            client.post(
+            await client.post(
                 BASE_URL + "/Medicover.OpenIdConnectAuthentication/Account/OAuthSignIn",
                 data=data,
                 follow_redirects=True,
             )
 
-            response = client.get(BASE_URL + "/", follow_redirects=True)
+            response = await client.get(BASE_URL + "/", follow_redirects=True)
             response.raise_for_status()
 
             self.sign_in_cookie = response.cookies[".ASPXAUTH"]
             logger.info("Successfully logged in")
 
     @with_login_retry
-    def find_region(self, user_input: str) -> FilterDataType:
-        found_regions = self.get_region(user_input)
+    async def find_region(self, user_input: str) -> FilterDataType:
+        found_regions = await self.get_region(user_input)
         if len(found_regions) > 1:
             title = "Select the region"
             options = [region["text"] for region in found_regions]
@@ -126,8 +126,8 @@ class MedicoverClient:
             raise ValueError("Region not found")
         return region
 
-    def find_specialization(self, user_input: str, region_id: int) -> FilterDataType:
-        found_specializations = self.get_specialization(user_input, region_id)
+    async def find_specialization(self, user_input: str, region_id: int) -> FilterDataType:
+        found_specializations = await self.get_specialization(user_input, region_id)
         if len(found_specializations) > 1:
             title = "Select the specialization"
             options = [specialization["text"] for specialization in found_specializations]
@@ -140,8 +140,8 @@ class MedicoverClient:
             raise ValueError("Specialization not found")
         return specialization
 
-    def find_clinic(self, user_input: str, region_id: int, specialization_id: int) -> FilterDataType:
-        found_clinics = self.get_clinic(user_input, region_id, specialization_id)
+    async def find_clinic(self, user_input: str, region_id: int, specialization_id: int) -> FilterDataType:
+        found_clinics = await self.get_clinic(user_input, region_id, specialization_id)
         if len(found_clinics) > 1:
             title = "Select the clinic"
             options = [clinic["text"] for clinic in found_clinics]
@@ -154,10 +154,10 @@ class MedicoverClient:
             raise ValueError("Clinic not found")
         return clinic
 
-    def find_doctor(
+    async def find_doctor(
         self, user_input: str, region_id: int, specialization_id: int, clinic_id: int | None
     ) -> FilterDataType:
-        found_doctors = self.get_doctor(user_input, region_id, specialization_id, clinic_id)
+        found_doctors = await self.get_doctor(user_input, region_id, specialization_id, clinic_id)
         if len(found_doctors) > 1:
             title = "Select the doctor"
             options = [doctor["text"] for doctor in found_doctors]
@@ -170,28 +170,28 @@ class MedicoverClient:
             raise ValueError("Doctor not found")
         return doctor
 
-    def create_new_appointment(self) -> None:
+    async def create_new_appointment(self) -> None:
         region_input = input("Give the region: ")
-        region = self.find_region(region_input)
+        region = await self.find_region(region_input)
         region_id = region["id"]
         logging.info("Selected region: %s", region["text"])
 
         user_expected_specialization = input("Give the specialization: ")
-        specialization = self.find_specialization(user_expected_specialization, region_id)
+        specialization = await self.find_specialization(user_expected_specialization, region_id)
         specialization_id = specialization["id"]
         logging.info("Selected specialization: %s", specialization["text"])
 
         user_expected_clinic = input("Give the clinic name or ENTER: ")
         clinic_id: int | None = None
         if user_expected_clinic:
-            clinic = self.find_clinic(user_expected_clinic, region_id, specialization_id)
+            clinic = await self.find_clinic(user_expected_clinic, region_id, specialization_id)
             clinic_id = clinic["id"]
             logging.info("Selected clinic: %s", clinic["text"])
 
         user_expected_doctor = input("Give the doctor's name or ENTER: ")
         doctor_id: int | None = None
         if user_expected_doctor:
-            doctor = self.find_doctor(user_expected_doctor, region_id, specialization_id, clinic_id)
+            doctor = await self.find_doctor(user_expected_doctor, region_id, specialization_id, clinic_id)
             doctor_id = doctor["id"]
             logging.info("Selected doctor: %s", doctor["text"])
 
@@ -208,7 +208,7 @@ class MedicoverClient:
         else:
             to_time = datetime.now().strftime("%H:%M")
 
-        slots = self.get_available_slots(
+        slots = await self.get_available_slots(
             region_id,
             specialization_id,
             doctor_id,
@@ -222,7 +222,7 @@ class MedicoverClient:
             logging.info("No slots available")
             y_n = input("Do you want to create a monitor? (y/n) ")
             if y_n == "y":
-                self.create_monitor(
+                await self.create_monitor(
                     region_id=region_id,
                     specialization_id=specialization_id,
                     clinic_id=clinic_id,
@@ -235,13 +235,13 @@ class MedicoverClient:
                 return
         logger.info("Available slots: %s", slots)
 
-    def create_monitor(self, **kwargs: Any) -> None:
+    async def create_monitor(self, **kwargs: Any) -> None:
         while True:
-            slots = self.get_available_slots(**kwargs)
+            slots = await self.get_available_slots(**kwargs)
             if slots:
                 break
             logger.info("No slots available for given parameters. Trying again in 30 seconds...")
-            time.sleep(30)
+            await asyncio.sleep(30)
 
     @staticmethod
     def extract_dates(user_input: str) -> tuple[str, str]:
@@ -253,7 +253,7 @@ class MedicoverClient:
         return date_, time_
 
     @with_login_retry
-    def get_available_slots(
+    async def get_available_slots(
         self,
         region_id: int,
         specialization_id: int,
@@ -261,8 +261,8 @@ class MedicoverClient:
         clinic_id: int | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        with Client(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
-            response = client.post(
+        async with AsyncClient(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
+            response = await client.post(
                 AVAILABLE_SLOTS,
                 json={
                     "regionIds": [region_id],
@@ -282,9 +282,9 @@ class MedicoverClient:
         return cast(list[dict[str, Any]], response_json["items"])
 
     @with_login_retry
-    def get_region(self, user_region: str) -> list[FilterDataType]:
-        with Client(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
-            response = client.get(REGIONS)
+    async def get_region(self, user_region: str) -> list[FilterDataType]:
+        async with AsyncClient(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
+            response = await client.get(REGIONS)
             response.raise_for_status()
 
         response_json = response.json()
@@ -294,26 +294,28 @@ class MedicoverClient:
 
         return found_regions
 
-    def get_specialization(self, user_expected_specialization: str, region_id: int) -> list[FilterDataType]:
-        response_json = self.get_filters_data(region_id, None, None)
+    async def get_specialization(self, user_expected_specialization: str, region_id: int) -> list[FilterDataType]:
+        response_json = await self.get_filters_data(region_id, None, None)
 
         response_specializations = response_json.get("services", [])
         found_specializations = self.parse_filters_data(user_expected_specialization, response_specializations)
 
         return found_specializations
 
-    def get_doctor(
+    async def get_doctor(
         self, user_expected_doctor: str, region_id: int, specialization_id: int, clinic_id: int | None = None
     ) -> list[FilterDataType]:
-        response_json = self.get_filters_data(region_id, specialization_id, clinic_id)
+        response_json = await self.get_filters_data(region_id, specialization_id, clinic_id)
 
         response_specializations = response_json.get("doctors", [])
         selected_doctors = self.parse_filters_data(user_expected_doctor, response_specializations)
 
         return selected_doctors
 
-    def get_clinic(self, user_expected_clinic: str, region_id: int, specialization_id: int) -> list[FilterDataType]:
-        response_json = self.get_filters_data(region_id, specialization_id)
+    async def get_clinic(
+        self, user_expected_clinic: str, region_id: int, specialization_id: int
+    ) -> list[FilterDataType]:
+        response_json = await self.get_filters_data(region_id, specialization_id)
 
         response_clinics = response_json.get("clinics", [])
         selected_clinics = self.parse_filters_data(user_expected_clinic, response_clinics)
@@ -321,11 +323,11 @@ class MedicoverClient:
         return selected_clinics
 
     @with_login_retry
-    def get_filters_data(
+    async def get_filters_data(
         self, region_id: int, specialization_id: int | None = None, clinic_id: int | None = None
     ) -> dict[str, list[FilterDataType]]:
-        with Client(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
-            response = client.get(
+        async with AsyncClient(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
+            response = await client.get(
                 FILTERS,
                 params={
                     "regionIds": region_id,
@@ -347,16 +349,16 @@ class MedicoverClient:
                 selected_filters.append(available_filter)
         return selected_filters
 
-    def get_appointments(self) -> list[dict[str, str]] | None:
+    async def get_appointments(self) -> list[dict[str, str]] | None:
         # TODO: Needs refactoring
         if self.sign_in_cookie:
-            with Client(cookies=Cookies({".ASPXAUTH": self.sign_in_cookie})) as client:
-                response = client.post(
+            async with AsyncClient(cookies=Cookies({".ASPXAUTH": self.sign_in_cookie})) as client:
+                response = await client.post(
                     APPOINTMENTS, headers=Headers({"X-Requested-With": "XMLHttpRequest"}), data={"PageSize": 100}
                 )
                 if response.status_code == httpx.codes.OK:
                     return cast(list[dict[str, str]], response.json().get("items"))
-                self.log_in()
+                await self.log_in()
                 return None
         return None
 
