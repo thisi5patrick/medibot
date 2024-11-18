@@ -31,7 +31,9 @@ from src.telegram_interface.find_appointments_command import (
     verify_summary,
 )
 from src.telegram_interface.login_command import login, password, username
+from src.telegram_interface.monitorings_command import active_monitorings_command, cancel_monitoring
 from src.telegram_interface.states import (
+    CANCEL_MONITORING,
     GET_LOCATION,
     GET_SPECIALIZATION,
     PROVIDE_PASSWORD,
@@ -58,6 +60,7 @@ async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> N
         [
             BotCommand("/login", "Login to Medicover"),
             BotCommand("/monitor", "Create a new appointment monitor"),
+            BotCommand("/active_monitorings", "Show all your appointment monitorings"),
             BotCommand("/help", "Show help message"),
         ]
     )
@@ -78,10 +81,18 @@ class TelegramBot:
         monitor_handler = ConversationHandler(
             entry_points=[CommandHandler("monitor", find_appointments)],
             states={
-                GET_LOCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_location)],
-                READ_LOCATION: [CallbackQueryHandler(read_location)],
-                GET_SPECIALIZATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_specialization)],
-                READ_SPECIALIZATION: [CallbackQueryHandler(read_specialization)],
+                GET_LOCATION: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, get_location),
+                ],
+                READ_LOCATION: [
+                    CallbackQueryHandler(read_location),
+                ],
+                GET_SPECIALIZATION: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, get_specialization),
+                ],
+                READ_SPECIALIZATION: [
+                    CallbackQueryHandler(read_specialization),
+                ],
                 READ_CLINIC: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clinic_text),
                     CallbackQueryHandler(handle_selected_clinic),
@@ -113,7 +124,18 @@ class TelegramBot:
             fallbacks=[],
         )
 
+        my_monitors_handler = ConversationHandler(
+            entry_points=[CommandHandler("active_monitorings", active_monitorings_command)],
+            states={
+                CANCEL_MONITORING: [
+                    CallbackQueryHandler(cancel_monitoring),
+                ]
+            },
+            fallbacks=[],
+        )
+
         self.bot.add_handler(login_handler)
         self.bot.add_handler(monitor_handler)
+        self.bot.add_handler(my_monitors_handler)
 
         self.bot.run_polling()
