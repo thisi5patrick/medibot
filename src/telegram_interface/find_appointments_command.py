@@ -888,6 +888,8 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
             await query_message.reply_text("\u2754 Czy chcesz utworzyć monitoring?", reply_markup=reply_markup)
 
+            # TODO: change method to async
+            # context.application.create_task(client.create_monitor(),update=update, name="monitor_v1")
             # TODO add monitoring job
             return ConversationHandler.END
 
