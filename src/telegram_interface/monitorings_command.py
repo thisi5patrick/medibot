@@ -33,8 +33,10 @@ async def active_monitorings_command(update: Update, context: ContextTypes.DEFAU
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
+        task_data = user_data[task.get_name()]
+
         # TODO: add proper text with appoinment data
-        await update_message.reply_text(f"{task.get_name()}", reply_markup=reply_markup)
+        await update_message.reply_text(task_data, reply_markup=reply_markup)
 
     user_data["user_tasks"] = user_tasks
 
@@ -54,7 +56,7 @@ async def cancel_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     for task in user_tasks:
         if task.get_name() == data:
             task.cancel()
-            await query_message.edit_text(f"Monitoring {data} usunięty")
+            await query_message.edit_text("Monitoring usunięty")
 
     user_tasks = [task for task in user_tasks if not task.cancelled()]
     user_data["user_tasks"] = user_tasks

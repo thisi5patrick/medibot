@@ -8,4 +8,6 @@
 [] - Add languages to bot
 [] - Update Dockerfile
 [] - Update setup.py
-[] - Fix mypy
+[X] - Fix mypy
+[] - Make texts more pleasent to read
+[] - Add history for search parameters

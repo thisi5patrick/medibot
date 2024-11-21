@@ -26,6 +26,7 @@ from src.telegram_interface.find_appointments_command import (
     handle_selected_doctor,
     handle_time_from_selection,
     handle_time_to_selection,
+    read_create_monitoring,
     read_location,
     read_specialization,
     verify_summary,
@@ -39,6 +40,7 @@ from src.telegram_interface.states import (
     PROVIDE_PASSWORD,
     PROVIDE_USERNAME,
     READ_CLINIC,
+    READ_CREATE_MONITORING,
     READ_DATE_FROM,
     READ_DATE_TO,
     READ_DOCTOR,
@@ -119,6 +121,9 @@ class TelegramBot:
                 ],
                 VERIFY_SUMMARY: [
                     CallbackQueryHandler(verify_summary),
+                ],
+                READ_CREATE_MONITORING: [
+                    CallbackQueryHandler(read_create_monitoring),
                 ],
             },
             fallbacks=[],
