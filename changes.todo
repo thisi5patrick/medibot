@@ -11,3 +11,4 @@
 [X] - Fix mypy
 [] - Make texts more pleasent to read
 [] - Add history for search parameters
+[] - Organize the persistence data

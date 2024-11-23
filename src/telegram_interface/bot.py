@@ -11,6 +11,7 @@ from telegram.ext import (
     CommandHandler,
     ConversationHandler,
     MessageHandler,
+    PicklePersistence,
     filters,
 )
 
@@ -70,7 +71,15 @@ async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> N
 
 class TelegramBot:
     def __init__(self) -> None:
-        self.bot = ApplicationBuilder().token(os.environ["TELEGRAM_BOT_TOKEN"]).post_init(post_init).build()
+        persistence = PicklePersistence(filepath=os.environ["TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH"])
+
+        self.bot = (
+            ApplicationBuilder()
+            .token(os.environ["TELEGRAM_BOT_TOKEN"])
+            .post_init(post_init)
+            .persistence(persistence)
+            .build()
+        )
         login_handler = ConversationHandler(
             entry_points=[CommandHandler("login", login)],
             states={
