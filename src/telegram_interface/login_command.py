@@ -44,6 +44,8 @@ async def password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await medicover_client.log_in()
         user_data["medicover_client"] = medicover_client
         await update.message.reply_text("Login attempt successful.")
+        user_data.pop("username")
+        user_data.pop("password")
         return ConversationHandler.END
     except Exception:
         await update.message.reply_text("Login failed. Please try again.")

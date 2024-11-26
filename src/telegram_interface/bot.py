@@ -17,8 +17,10 @@ from telegram.ext import (
 
 from src.telegram_interface.find_appointments_command import (
     find_appointments,
-    get_location,
-    get_specialization,
+    get_location_from_buttons,
+    get_location_from_input,
+    get_specialization_from_buttons,
+    get_specialization_from_input,
     handle_clinic_text,
     handle_date_from_selection,
     handle_date_to_selection,
@@ -93,13 +95,15 @@ class TelegramBot:
             entry_points=[CommandHandler("monitor", find_appointments)],
             states={
                 GET_LOCATION: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, get_location),
+                    CallbackQueryHandler(get_location_from_buttons),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, get_location_from_input),
                 ],
                 READ_LOCATION: [
                     CallbackQueryHandler(read_location),
                 ],
                 GET_SPECIALIZATION: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, get_specialization),
+                    CallbackQueryHandler(get_specialization_from_buttons),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, get_specialization_from_input),
                 ],
                 READ_SPECIALIZATION: [
                     CallbackQueryHandler(read_specialization),

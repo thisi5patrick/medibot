@@ -21,7 +21,9 @@ from src.telegram_interface.helpers import (
     NO_ANSWER,
     YES_ANSWER,
     extract_dates_from_user_data,
+    prepare_clinic_keyboard,
     prepare_date_keyboard,
+    prepare_specialization_keyboard,
     prepare_time_keyboard,
 )
 from src.telegram_interface.states import (
@@ -38,6 +40,7 @@ from src.telegram_interface.states import (
     READ_TIME_TO,
     VERIFY_SUMMARY,
 )
+from src.telegram_interface.user_data import Location, Specialization, UserDataDataclass
 
 logger = logging.getLogger(__name__)
 
@@ -52,75 +55,219 @@ async def find_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if update.message is None:
         return ConversationHandler.END
 
-    user_data = cast(dict[str, Any], context.user_data)
+    user_data = cast(UserDataDataclass, context.user_data)
 
-    client: MedicoverClient | None = user_data.get("medicover_client")
+    client = user_data.get("medicover_client")
     if not client:
         await update.message.reply_text("Please log in first.")
         return ConversationHandler.END
 
-    await update.message.reply_text("Wpisz fragment szukanego miasta")
+    if user_data.get("history") is None:
+        user_data["history"] = {
+            "locations": [],
+            "specializations": [],
+            "clinics": {},
+            "doctors": {},
+            "temp_data": {},
+        }
 
-    return GET_LOCATION
+    locations_history = user_data["history"]["locations"]
 
-
-async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message is None:
-        return ConversationHandler.END
-    user_data = cast(dict[str, Any], context.user_data)
-
-    client: MedicoverClient = user_data["medicover_client"]
-    location_input = update.message.text
-    locations = await client.get_region(location_input)
-
-    if locations:
-        user_data["locations"] = {str(loc["id"]): loc for loc in locations}
-
-        keyboard = [[InlineKeyboardButton(loc["text"], callback_data=str(loc["id"]))] for loc in locations]
+    if locations_history:
+        keyboard = [
+            [InlineKeyboardButton(location["location_name"], callback_data=str(location["location_id"]))]
+            for location in locations_history
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update.message.reply_text("Wybierz miasto z listy:", reply_markup=reply_markup)
+        await update.message.reply_text(
+            "Wpisz fragment szukanego miasta albo wybierz z ostatnio szukanych:", reply_markup=reply_markup
+        )
 
-        return READ_LOCATION
-
-    await update.message.reply_text("Nie znaleziono miasta. Wpisz ponownie.")
+    else:
+        await update.message.reply_text("Wpisz fragment szukanego miasta:")
     return GET_LOCATION
+
+
+async def get_location_from_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data = cast(UserDataDataclass, context.user_data)
+    client = user_data.get("medicover_client")
+    if not client:
+        update_message = cast(Message, update.message)
+        await update_message.reply_text("Please log in first.")
+        return ConversationHandler.END
+
+    query = cast(CallbackQuery, update.callback_query)
+    await query.answer()
+
+    location_id = cast(str, query.data)
+
+    location = next(
+        (item for item in user_data["history"]["locations"] if item["location_id"] == int(location_id)), None
+    )
+    if not location:
+        return ConversationHandler.END
+
+    location_text = location["location_name"]
+
+    bookings = user_data.get("bookings")
+
+    if not bookings:
+        user_data["bookings"] = {}
+
+    next_booking_number = next(reversed(user_data["bookings"])) + 1
+
+    user_data["current_booking_number"] = next_booking_number
+    user_data["bookings"][next_booking_number] = {"location": location}
+
+    await query.edit_message_text(f"\u2705 Wybrano miasto: {location_text}")
+
+    query_message = cast(Message, query.message)
+
+    reply_markup = prepare_specialization_keyboard(user_data)
+
+    await query_message.reply_text(
+        "Wpisz fragment szukanej specjalizacji albo wybierz z ostatnio szukanych",
+        reply_markup=reply_markup,
+    )
+
+    return GET_SPECIALIZATION
+
+
+async def get_location_from_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data = cast(UserDataDataclass, context.user_data)
+    client = user_data.get("medicover_client")
+    if not client:
+        update_message = cast(Message, update.message)
+        await update_message.reply_text("Please log in first.")
+        return ConversationHandler.END
+
+    update_message = cast(Message, update.message)
+    location_input = cast(str, update_message.text)
+
+    locations = await client.get_region(location_input)
+    if not locations:
+        await update_message.reply_text("Nie znaleziono miasta. Wpisz ponownie.")
+        return GET_LOCATION
+
+    user_data["history"]["temp_data"]["locations"] = {location["id"]: location["text"] for location in locations}
+    keyboard = [[InlineKeyboardButton(location["text"], callback_data=str(location["id"]))] for location in locations]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update_message.reply_text("Wybierz miasto z listy:", reply_markup=reply_markup)
+
+    return READ_LOCATION
 
 
 async def read_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data = cast(dict[str, Any], context.user_data)
+    user_data = cast(UserDataDataclass, context.user_data)
+    client = user_data.get("medicover_client")
+    if not client:
+        update_message = cast(Message, update.message)
+        await update_message.reply_text("Please log in first.")
+        return ConversationHandler.END
 
     query = cast(CallbackQuery, update.callback_query)
 
     await query.answer()
 
-    location_id = query.data
-    locations = user_data.get("locations", {})
-    selected_location = locations.get(location_id)
+    user_input_location_id = int(cast(str, query.data))
+    temp_locations = user_data["history"]["temp_data"]["locations"]
+    location_text = temp_locations[user_input_location_id]
+    location = Location(location_id=user_input_location_id, location_name=location_text)
 
-    location_text = selected_location["text"]
+    user_data["history"]["locations"].append(location)
 
-    user_data["location_id"] = location_id
+    bookings = user_data.get("bookings")
+
+    if not bookings:
+        user_data["bookings"] = {}
+
+    next_booking_number = next(reversed(user_data["bookings"])) + 1
+
+    user_data["current_booking_number"] = next_booking_number
+    user_data["bookings"][next_booking_number] = {"location": location}
+
     await query.edit_message_text(f"\u2705 Wybrano miasto: {location_text}")
 
     query_message = cast(Message, query.message)
 
-    await query_message.reply_text("Wpisz fragment szukanej specjalizacji")
+    reply_markup = prepare_specialization_keyboard(user_data)
+
+    await query_message.reply_text(
+        "Wpisz fragment szukanej specjalizacji albo wybierz z ostatnio szukanych",
+        reply_markup=reply_markup,
+    )
 
     return GET_SPECIALIZATION
 
 
-async def get_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def get_specialization_from_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data = cast(UserDataDataclass, context.user_data)
+    client = user_data.get("medicover_client")
+    if not client:
+        update_message = cast(Message, update.message)
+        await update_message.reply_text("Please log in first.")
+        return ConversationHandler.END
+
+    query = cast(CallbackQuery, update.callback_query)
+    await query.answer()
+
+    specialization_id = int(cast(str, query.data))
+    specialization = next(
+        (item for item in user_data["history"]["specializations"] if item["specialization_id"] == specialization_id),
+        None,
+    )
+    if not specialization:
+        return ConversationHandler.END
+
+    specialization_text = specialization["specialization_name"]
+
+    current_booking_number = user_data["current_booking_number"]
+    user_data["bookings"][current_booking_number]["specialization"] = specialization
+
+    await query.edit_message_text(f"\u2705 Wybrano specjalizacje: {specialization_text}")
+
+    query_message = cast(Message, query.message)
+
+    clinics = user_data["history"]["clinics"].get(specialization_id)
+    if clinics:
+        clinic_buttons = [
+            [InlineKeyboardButton(clinic["clinic_name"], callback_data=str(clinic["clinic_id"]))] for clinic in clinics
+        ]
+    else:
+        clinic_buttons = []
+    keyboard = [
+        [InlineKeyboardButton("Jakakolwiek", callback_data="any")],
+        *clinic_buttons,
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query_message.reply_text("Wybierz klinikę albo podaj własną:", reply_markup=reply_markup)
+
+    return READ_CLINIC
+
+
+async def get_specialization_from_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_data = cast(dict[str, Any], context.user_data)
     update_message = cast(Message, update.message)
 
-    client: MedicoverClient = user_data["medicover_client"]
-    specialization_input = update_message.text
+    client = user_data.get("medicover_client")
+    if not client:
+        update_message = cast(Message, update.message)
+        await update_message.reply_text("Please log in first.")
+        return ConversationHandler.END
 
-    specializations = await client.get_specialization(cast(str, specialization_input), user_data["location_id"])
+    specialization_input = cast(str, update_message.text)
+    booking_number = user_data["current_booking_number"]
+    location_id: int = user_data["bookings"][booking_number]["location"]["location_id"]
+
+    specializations = await client.get_specialization(specialization_input, location_id)
 
     if specializations:
-        user_data["specializations"] = {str(spec["id"]): spec for spec in specializations}
+        user_data["history"]["temp_data"]["specializations"] = {
+            specialization["id"]: specialization["text"] for specialization in specializations
+        }
 
         keyboard = [[InlineKeyboardButton(spec["text"], callback_data=str(spec["id"]))] for spec in specializations]
 
@@ -136,24 +283,28 @@ async def get_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def read_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = cast(CallbackQuery, update.callback_query)
-    user_data = cast(dict[str, Any], context.user_data)
+    user_data = cast(UserDataDataclass, context.user_data)
 
     await query.answer()
 
-    specialization_id = query.data
-    specializations = user_data.get("specializations", {})
-    selected_spec = specializations.get(specialization_id)
+    user_input_specialization_id = int(cast(str, query.data))
+    temp_specializations = user_data["history"]["temp_data"]
+    specialization_text = temp_specializations[user_input_specialization_id]
 
-    specialization_text = selected_spec["text"]
+    specialization = Specialization(
+        specialization_id=user_input_specialization_id, specialization_name=specialization_text
+    )
 
-    user_data["specialization_id"] = specialization_id
+    user_data["history"]["specializations"].append(specialization)
+
+    booking_number = user_data["current_booking_number"]
+    user_data["bookings"][booking_number]["specialization"] = specialization
 
     await query.edit_message_text(text=f"\u2705 Wybrano specjalizacje: {specialization_text}")
 
-    keyboard = [[InlineKeyboardButton("Jakakolwiek", callback_data="any")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     query_message = cast(Message, query.message)
+
+    reply_markup = prepare_clinic_keyboard(user_data, user_input_specialization_id)
     await query_message.reply_text("Wybierz klinikę albo podaj własną:", reply_markup=reply_markup)
 
     return READ_CLINIC
