@@ -15,7 +15,7 @@ from telegram.ext import (
     filters,
 )
 
-from src.telegram_interface.find_appointments_command import (
+from src.telegram_interface.commands.find_appointments import (
     find_appointments,
     get_location_from_buttons,
     get_location_from_input,
@@ -34,8 +34,8 @@ from src.telegram_interface.find_appointments_command import (
     read_specialization,
     verify_summary,
 )
-from src.telegram_interface.login_command import login, password, username
-from src.telegram_interface.monitorings_command import active_monitorings_command, cancel_monitoring
+from src.telegram_interface.commands.login import login, password, username
+from src.telegram_interface.commands.monitorings import active_monitorings_command, cancel_monitoring
 from src.telegram_interface.states import (
     CANCEL_MONITORING,
     GET_LOCATION,
