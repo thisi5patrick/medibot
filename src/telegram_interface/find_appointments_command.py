@@ -288,9 +288,8 @@ async def read_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer()
 
     user_input_specialization_id = int(cast(str, query.data))
-    temp_specializations = user_data["history"]["temp_data"]
+    temp_specializations = user_data["history"]["temp_data"]["specializations"]
     specialization_text = temp_specializations[user_input_specialization_id]
-
     specialization = Specialization(
         specialization_id=user_input_specialization_id, specialization_name=specialization_text
     )
