@@ -23,10 +23,12 @@ from src.telegram_interface.helpers import (
     extract_dates_from_user_data,
     prepare_clinic_keyboard,
     prepare_date_keyboard,
+    prepare_doctor_keyboard,
     prepare_specialization_keyboard,
     prepare_time_keyboard,
 )
 from src.telegram_interface.states import (
+    GET_CLINIC,
     GET_LOCATION,
     GET_SPECIALIZATION,
     READ_CLINIC,
@@ -40,7 +42,7 @@ from src.telegram_interface.states import (
     READ_TIME_TO,
     VERIFY_SUMMARY,
 )
-from src.telegram_interface.user_data import Location, Specialization, UserDataDataclass
+from src.telegram_interface.user_data import Clinic, Location, Specialization, UserDataDataclass
 
 logger = logging.getLogger(__name__)
 
@@ -230,26 +232,17 @@ async def get_specialization_from_buttons(update: Update, context: ContextTypes.
 
     query_message = cast(Message, query.message)
 
-    clinics = user_data["history"]["clinics"].get(specialization_id)
-    if clinics:
-        clinic_buttons = [
-            [InlineKeyboardButton(clinic["clinic_name"], callback_data=str(clinic["clinic_id"]))] for clinic in clinics
-        ]
-    else:
-        clinic_buttons = []
-    keyboard = [
-        [InlineKeyboardButton("Jakakolwiek", callback_data="any")],
-        *clinic_buttons,
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = prepare_clinic_keyboard(user_data, specialization_id)
 
-    await query_message.reply_text("Wybierz klinikę albo podaj własną:", reply_markup=reply_markup)
+    await query_message.reply_text(
+        "Wpisz fragment szukanej kliniki albo wybierz z ostatnio szukanych", reply_markup=reply_markup
+    )
 
-    return READ_CLINIC
+    return GET_CLINIC
 
 
 async def get_specialization_from_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data = cast(dict[str, Any], context.user_data)
+    user_data = cast(UserDataDataclass, context.user_data)
     update_message = cast(Message, update.message)
 
     client = user_data.get("medicover_client")
@@ -304,61 +297,176 @@ async def read_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_clinic_keyboard(user_data, user_input_specialization_id)
-    await query_message.reply_text("Wybierz klinikę albo podaj własną:", reply_markup=reply_markup)
+    await query_message.reply_text(
+        "Wpisz fragment szukanej kliniki albo wybierz z ostatnio szukanych", reply_markup=reply_markup
+    )
 
-    return READ_CLINIC
+    return GET_CLINIC
 
 
-async def handle_clinic_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data = cast(dict[str, Any], context.user_data)
+async def get_clinic_from_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data = cast(UserDataDataclass, context.user_data)
+    client = user_data.get("medicover_client")
+    if not client:
+        update_message = cast(Message, update.message)
+        await update_message.reply_text("Please log in first.")
+        return ConversationHandler.END
+
+    query = cast(CallbackQuery, update.callback_query)
+    await query.answer()
+
+    clinic_id = cast(str, query.data)
+
+    current_booking_number = user_data["current_booking_number"]
+
+    if clinic_id == "any":
+        clinic_id = None  # type: ignore[assignment]
+        clinic_text = "Jakakolwiek"
+        specialization_id = None
+    else:
+        specialization_id = user_data["bookings"][current_booking_number]["specialization"]["specialization_id"]
+
+        clinic = next(
+            (
+                item
+                for item in user_data["history"]["clinics"][specialization_id]
+                if item["clinic_id"] == int(clinic_id)
+            ),
+            None,
+        )
+        if clinic is None:
+            return ConversationHandler.END
+
+        user_data["bookings"][current_booking_number]["clinic"] = clinic
+        clinic_text = clinic["clinic_name"]
+
+    await query.edit_message_text(f"\u2705 Wybrano klinikę: {clinic_text}")
+
+    query_message = cast(Message, query.message)
+
+    reply_markup = prepare_doctor_keyboard(user_data, specialization_id, int(clinic_id))
+
+    await query_message.reply_text(
+        "Wpisz fragment nazwy lekarza albo wybierz z ostatnio szukanych", reply_markup=reply_markup
+    )
+
+    return READ_DOCTOR
+
+
+async def get_clinic_from_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_data = cast(UserDataDataclass, context.user_data)
     update_message = cast(Message, update.message)
 
-    client: MedicoverClient = user_data["medicover_client"]
-    location_id = user_data["location_id"]
-    specialization_id = user_data["specialization_id"]
+    client = user_data.get("medicover_client")
+    if not client:
+        update_message = cast(Message, update.message)
+        await update_message.reply_text("Please log in first.")
+        return ConversationHandler.END
 
-    user_input = cast(str, update_message.text)
+    clinic_input = cast(str, update_message.text)
+    booking_number = user_data["current_booking_number"]
+    location_id = user_data["bookings"][booking_number]["location"]["location_id"]
+    specialization_id = user_data["bookings"][booking_number]["specialization"]["specialization_id"]
 
-    clinics = await client.get_clinic(user_input, location_id, specialization_id)
-
+    clinics = await client.get_clinic(clinic_input, location_id, specialization_id)
     if clinics:
-        user_data["clinics"] = {str(clinic["id"]): clinic for clinic in clinics}
+        user_data["history"]["temp_data"]["clinics"] = {clinic["id"]: clinic["text"] for clinic in clinics}
 
         keyboard = [[InlineKeyboardButton(clinic["text"], callback_data=str(clinic["id"]))] for clinic in clinics]
         keyboard.append([InlineKeyboardButton("Jakakolwiek", callback_data="any")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update_message.reply_text("Wybierz klinikę z listy:", reply_markup=reply_markup)
+        await update_message.reply_text("Wybierz klinike:", reply_markup=reply_markup)
+
         return READ_CLINIC
 
     await update_message.reply_text("Nie znaleziono kliniki. Wpisz ponownie.")
-    return READ_CLINIC
+
+    return GET_CLINIC
 
 
-async def handle_selected_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def read_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = cast(CallbackQuery, update.callback_query)
-    user_data = cast(dict[str, Any], context.user_data)
+    user_data = cast(UserDataDataclass, context.user_data)
 
     await query.answer()
 
-    clinic_id = query.data
-    clinics = user_data.get("clinics", {})
-    selected_clinic = clinics.get(clinic_id)
-    if not selected_clinic:
-        selected_clinic = "Jakakolwiek"
-    else:
-        selected_clinic = selected_clinic["text"]
-        user_data["clinic_id"] = clinic_id
+    user_input_clinic_id = int(cast(str, query.data))
+    temp_clinics = user_data["history"]["temp_data"]["clinics"]
+    specialization_text = temp_clinics[user_input_clinic_id]
+    clinic = Clinic(clinic_id=user_input_clinic_id, clinic_name=specialization_text)
 
-    await query.edit_message_text(f"\u2705 Wybrano klinikę: {selected_clinic}")
+    booking_number = user_data["current_booking_number"]
+    specialization_id = user_data["bookings"][booking_number]["specialization"]["specialization_id"]
 
-    keyboard = [[InlineKeyboardButton("Jakikolwiek", callback_data="any")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    if specialization_id not in user_data["history"]["clinics"]:
+        user_data["history"]["clinics"][specialization_id] = []
+
+    user_data["history"]["clinics"][specialization_id].append(clinic)
+    user_data["bookings"][booking_number]["clinic"] = clinic
+
+    await query.edit_message_text(f"\u2705 Wybrano klinikę: {specialization_text}")
 
     query_message = cast(Message, query.message)
-    await query_message.reply_text("Wybierz lekarza albo podaj:", reply_markup=reply_markup)
+
+    reply_markup = prepare_doctor_keyboard(user_data, specialization_id, user_input_clinic_id)
+    await query_message.reply_text(
+        "Wpisz fragment nazwy lekarza albo wybierz z ostatnio szukanych", reply_markup=reply_markup
+    )
 
     return READ_DOCTOR
+
+
+# async def handle_clinic_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     user_data = cast(dict[str, Any], context.user_data)
+#     update_message = cast(Message, update.message)
+#
+#     client: MedicoverClient = user_data["medicover_client"]
+#     location_id = user_data["location_id"]
+#     specialization_id = user_data["specialization_id"]
+#
+#     user_input = cast(str, update_message.text)
+#
+#     clinics = await client.get_clinic(user_input, location_id, specialization_id)
+#
+#     if clinics:
+#         user_data["clinics"] = {str(clinic["id"]): clinic for clinic in clinics}
+#
+#         keyboard = [[InlineKeyboardButton(clinic["text"], callback_data=str(clinic["id"]))] for clinic in clinics]
+#         keyboard.append([InlineKeyboardButton("Jakakolwiek", callback_data="any")])
+#         reply_markup = InlineKeyboardMarkup(keyboard)
+#
+#         await update_message.reply_text("Wybierz klinikę z listy:", reply_markup=reply_markup)
+#         return READ_CLINIC
+#
+#     await update_message.reply_text("Nie znaleziono kliniki. Wpisz ponownie.")
+#     return READ_CLINIC
+#
+#
+# async def handle_selected_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     query = cast(CallbackQuery, update.callback_query)
+#     user_data = cast(dict[str, Any], context.user_data)
+#
+#     await query.answer()
+#
+#     clinic_id = query.data
+#     clinics = user_data.get("clinics", {})
+#     selected_clinic = clinics.get(clinic_id)
+#     if not selected_clinic:
+#         selected_clinic = "Jakakolwiek"
+#     else:
+#         selected_clinic = selected_clinic["text"]
+#         user_data["clinic_id"] = clinic_id
+#
+#     await query.edit_message_text(f"\u2705 Wybrano klinikę: {selected_clinic}")
+#
+#     keyboard = [[InlineKeyboardButton("Jakikolwiek", callback_data="any")]]
+#     reply_markup = InlineKeyboardMarkup(keyboard)
+#
+#     query_message = cast(Message, query.message)
+#     await query_message.reply_text("Wybierz lekarza albo podaj:", reply_markup=reply_markup)
+#
+#     return READ_DOCTOR
 
 
 async def handle_doctor_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int | None:

@@ -27,7 +27,7 @@ class UserDataHistory(TypedDict):
     locations: list[Location]
     specializations: list[Specialization]
     clinics: dict[int, list[Clinic]]
-    doctors: dict[int, list[Doctor]]
+    doctors: dict[int, dict[int, list[Doctor]]]
 
     temp_data: dict[str, dict[int, str]]
 
@@ -44,9 +44,9 @@ class MonitoringTime(TypedDict):
 
 
 class Bookings(TypedDict, total=False):
-    location: Location | None
-    specialization: Specialization | None
-    clinic: Clinic | None
+    location: Location
+    specialization: Specialization
+    clinic: Clinic
     doctor: Doctor | None
     from_date: MonitoringDate | None
     from_time: MonitoringTime | None

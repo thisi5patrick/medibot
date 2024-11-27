@@ -17,18 +17,21 @@ from telegram.ext import (
 
 from src.telegram_interface.commands.find_appointments import (
     find_appointments,
+    get_clinic_from_buttons,
+    get_clinic_from_input,
     get_location_from_buttons,
     get_location_from_input,
     get_specialization_from_buttons,
     get_specialization_from_input,
-    handle_clinic_text,
+    # handle_clinic_text,
     handle_date_from_selection,
     handle_date_to_selection,
     handle_doctor_text,
-    handle_selected_clinic,
+    # handle_selected_clinic,
     handle_selected_doctor,
     handle_time_from_selection,
     handle_time_to_selection,
+    read_clinic,
     read_create_monitoring,
     read_location,
     read_specialization,
@@ -38,6 +41,7 @@ from src.telegram_interface.commands.login import login, password, username
 from src.telegram_interface.commands.monitorings import active_monitorings_command, cancel_monitoring
 from src.telegram_interface.states import (
     CANCEL_MONITORING,
+    GET_CLINIC,
     GET_LOCATION,
     GET_SPECIALIZATION,
     PROVIDE_PASSWORD,
@@ -108,9 +112,12 @@ class TelegramBot:
                 READ_SPECIALIZATION: [
                     CallbackQueryHandler(read_specialization),
                 ],
+                GET_CLINIC: [
+                    CallbackQueryHandler(get_clinic_from_buttons),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, get_clinic_from_input),
+                ],
                 READ_CLINIC: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clinic_text),
-                    CallbackQueryHandler(handle_selected_clinic),
+                    CallbackQueryHandler(read_clinic),
                 ],
                 READ_DOCTOR: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_doctor_text),

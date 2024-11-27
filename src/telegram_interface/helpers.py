@@ -109,3 +109,28 @@ def prepare_clinic_keyboard(user_data: UserDataDataclass, specialization_id: int
         *clinic_buttons,
     ]
     return InlineKeyboardMarkup(keyboard)
+
+
+def prepare_doctor_keyboard(
+    user_data: UserDataDataclass, specialization_id: int | None, clinic_id: int | None
+) -> InlineKeyboardMarkup:
+    if specialization_id is not None and clinic_id is not None:
+        clinics = user_data["history"]["doctors"].get(specialization_id)
+        if clinics:
+            doctors = clinics.get(clinic_id)
+            if doctors:
+                doctor_buttons = [
+                    [InlineKeyboardButton(doctor["doctor_name"], callback_data=str(doctor["doctor_id"]))]
+                    for doctor in doctors
+                ]
+            else:
+                doctor_buttons = []
+        else:
+            doctor_buttons = []
+    else:
+        doctor_buttons = []
+    keyboard = [
+        [InlineKeyboardButton("Jakikolwiek", callback_data="any")],
+        *doctor_buttons,
+    ]
+    return InlineKeyboardMarkup(keyboard)
