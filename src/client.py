@@ -333,7 +333,7 @@ class MedicoverClient:
                     "regionIds": region_id,
                     "serviceTypeId": 2,
                     "serviceIds": specialization_id,
-                    "clinic": clinic_id,
+                    "clinicIds": clinic_id,
                 },
             )
             response.raise_for_status()

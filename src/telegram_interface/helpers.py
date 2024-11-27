@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -31,6 +32,20 @@ def prepare_date_keyboard(day: int, month: int, year: int) -> InlineKeyboardMark
     ]
 
     return InlineKeyboardMarkup(keyboard)
+
+
+def prepare_date_from_selection(user_data: UserDataDataclass) -> InlineKeyboardMarkup:
+    day = date.today().day
+    month = date.today().month
+    year = date.today().year
+
+    current_booking_number = user_data["current_booking_number"]
+
+    user_data["bookings"][current_booking_number]["from_date"] = {"day": day, "month": month, "year": year}
+
+    reply_markup = prepare_date_keyboard(day, month, year)
+
+    return reply_markup
 
 
 def prepare_time_keyboard(hour: int, minute: int) -> InlineKeyboardMarkup:
@@ -111,22 +126,12 @@ def prepare_clinic_keyboard(user_data: UserDataDataclass, specialization_id: int
     return InlineKeyboardMarkup(keyboard)
 
 
-def prepare_doctor_keyboard(
-    user_data: UserDataDataclass, specialization_id: int | None, clinic_id: int | None
-) -> InlineKeyboardMarkup:
-    if specialization_id is not None and clinic_id is not None:
-        clinics = user_data["history"]["doctors"].get(specialization_id)
-        if clinics:
-            doctors = clinics.get(clinic_id)
-            if doctors:
-                doctor_buttons = [
-                    [InlineKeyboardButton(doctor["doctor_name"], callback_data=str(doctor["doctor_id"]))]
-                    for doctor in doctors
-                ]
-            else:
-                doctor_buttons = []
-        else:
-            doctor_buttons = []
+def prepare_doctor_keyboard(user_data: UserDataDataclass, specialization_id: int) -> InlineKeyboardMarkup:
+    doctors = user_data["history"]["doctors"].get(specialization_id)
+    if doctors:
+        doctor_buttons = [
+            [InlineKeyboardButton(doctor["doctor_name"], callback_data=str(doctor["doctor_id"]))] for doctor in doctors
+        ]
     else:
         doctor_buttons = []
     keyboard = [

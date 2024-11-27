@@ -14,12 +14,12 @@ class Specialization(TypedDict):
 
 
 class Clinic(TypedDict):
-    clinic_id: int
+    clinic_id: int | None
     clinic_name: str
 
 
 class Doctor(TypedDict):
-    doctor_id: int
+    doctor_id: int | None
     doctor_name: str
 
 
@@ -27,15 +27,15 @@ class UserDataHistory(TypedDict):
     locations: list[Location]
     specializations: list[Specialization]
     clinics: dict[int, list[Clinic]]
-    doctors: dict[int, dict[int, list[Doctor]]]
+    doctors: dict[int, list[Doctor]]
 
     temp_data: dict[str, dict[int, str]]
 
 
 class MonitoringDate(TypedDict):
-    day: str
-    month: str
-    year: str
+    day: int
+    month: int
+    year: int
 
 
 class MonitoringTime(TypedDict):
