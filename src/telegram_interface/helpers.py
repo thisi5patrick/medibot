@@ -1,12 +1,19 @@
-from datetime import date
-from typing import Any
+from calendar import monthrange
+from datetime import date, datetime
+from typing import Literal
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from src.telegram_interface.user_data import UserDataDataclass
 
 YES_ANSWER = "yes"
 NO_ANSWER = "no"
+DATE_INCREMENT = 1
+MINUTE_INCREMENT = 15
+HOUR_INCREMENT = 1
+MAX_MINUTES = 60
+MAX_HOURS = 24
+MAX_MONTHS = 12
 
 
 def prepare_date_keyboard(day: int, month: int, year: int) -> InlineKeyboardMarkup:
@@ -34,14 +41,22 @@ def prepare_date_keyboard(day: int, month: int, year: int) -> InlineKeyboardMark
     return InlineKeyboardMarkup(keyboard)
 
 
-def prepare_date_from_selection(user_data: UserDataDataclass) -> InlineKeyboardMarkup:
-    day = date.today().day
-    month = date.today().month
-    year = date.today().year
+def prepare_date_selection(
+    user_data: UserDataDataclass, booking_date_type: Literal["from_date", "to_date"]
+) -> InlineKeyboardMarkup:
+    if booking_date_type == "from_date":
+        day = date.today().day
+        month = date.today().month
+        year = date.today().year
+    else:
+        from_date_values = user_data["bookings"][user_data["current_booking_number"]]["from_date"]
+        day = from_date_values["day"]
+        month = from_date_values["month"]
+        year = from_date_values["year"]
 
     current_booking_number = user_data["current_booking_number"]
 
-    user_data["bookings"][current_booking_number]["from_date"] = {"day": day, "month": month, "year": year}
+    user_data["bookings"][current_booking_number][booking_date_type] = {"day": day, "month": month, "year": year}
 
     reply_markup = prepare_date_keyboard(day, month, year)
 
@@ -68,28 +83,6 @@ def prepare_time_keyboard(hour: int, minute: int) -> InlineKeyboardMarkup:
     ]
 
     return InlineKeyboardMarkup(keyboard)
-
-
-def extract_dates_from_user_data(user_data: dict[str, Any]) -> tuple[str, str, str, str]:
-    selected_from_day = user_data["selected_from_day"]
-    selected_from_month = user_data["selected_from_month"]
-    selected_from_year = user_data["selected_from_year"]
-    selected_from_date = f"{selected_from_day:02d}-{selected_from_month:02d}-{selected_from_year}"
-
-    selected_from_hour = user_data["selected_from_hour"]
-    selected_from_minute = user_data["selected_from_minute"]
-    selected_from_time = f"{selected_from_hour:02d}:{selected_from_minute:02d}"
-
-    selected_to_day = user_data["selected_to_day"]
-    selected_to_month = user_data["selected_to_month"]
-    selected_to_year = user_data["selected_to_year"]
-    selected_to_date = f"{selected_to_day:02d}-{selected_to_month:02d}-{selected_to_year}"
-
-    selected_to_hour = user_data["selected_to_hour"]
-    selected_to_minute = user_data["selected_to_minute"]
-    selected_to_time = f"{selected_to_hour:02d}:{selected_to_minute:02d}"
-
-    return selected_from_date, selected_from_time, selected_to_date, selected_to_time
 
 
 def prepare_specialization_keyboard(user_data: UserDataDataclass) -> InlineKeyboardMarkup:
@@ -139,3 +132,185 @@ def prepare_doctor_keyboard(user_data: UserDataDataclass, specialization_id: int
         *doctor_buttons,
     ]
     return InlineKeyboardMarkup(keyboard)
+
+
+def adjust_day(
+    user_data: UserDataDataclass, increment: int, booking_date_parameter: Literal["from_date", "to_date"]
+) -> None:
+    current_booking_number = user_data["current_booking_number"]
+
+    day = user_data["bookings"][current_booking_number][booking_date_parameter]["day"]
+    month = user_data["bookings"][current_booking_number][booking_date_parameter]["month"]
+    year = user_data["bookings"][current_booking_number][booking_date_parameter]["year"]
+    max_day = monthrange(year, month)[1]
+    day = max(1, min(day + increment, max_day))
+    user_data["bookings"][current_booking_number][booking_date_parameter]["day"] = day
+
+
+def adjust_month(
+    user_data: UserDataDataclass, increment: int, booking_date_parameter: Literal["from_date", "to_date"]
+) -> None:
+    current_booking_number = user_data["current_booking_number"]
+
+    month = user_data["bookings"][current_booking_number][booking_date_parameter]["month"]
+    month += increment
+    if month > MAX_MONTHS:
+        month = 1
+    elif month < 1:
+        month = 12
+    user_data["bookings"][current_booking_number][booking_date_parameter]["month"] = month
+    adjust_day(user_data, 0, booking_date_parameter)
+
+
+def adjust_year(
+    user_data: UserDataDataclass, increment: int, booking_date_parameter: Literal["from_date", "to_date"]
+) -> None:
+    current_booking_number = user_data["current_booking_number"]
+
+    year = user_data["bookings"][current_booking_number][booking_date_parameter]["year"]
+    year += increment
+    if year >= datetime.now().year or increment > 0:
+        user_data["bookings"][current_booking_number][booking_date_parameter]["year"] = year
+        adjust_day(user_data, 0, booking_date_parameter)
+
+
+def handle_date_selection(
+    user_action: str, user_data: UserDataDataclass, booking_date_parameter: Literal["from_date", "to_date"]
+) -> str | None:
+    current_booking_number = user_data["current_booking_number"]
+
+    if user_action == "day_up":
+        adjust_day(user_data, DATE_INCREMENT, booking_date_parameter)
+    elif user_action == "day_down":
+        adjust_day(user_data, -DATE_INCREMENT, booking_date_parameter)
+    elif user_action == "month_up":
+        adjust_month(user_data, DATE_INCREMENT, booking_date_parameter)
+    elif user_action == "month_down":
+        adjust_month(user_data, -DATE_INCREMENT, booking_date_parameter)
+    elif user_action == "year_up":
+        adjust_year(user_data, DATE_INCREMENT, booking_date_parameter)
+    elif user_action == "year_down":
+        adjust_year(user_data, -DATE_INCREMENT, booking_date_parameter)
+    elif user_action == "date_done":
+        selected_day = user_data["bookings"][current_booking_number][booking_date_parameter]["day"]
+        selected_month = user_data["bookings"][current_booking_number][booking_date_parameter]["month"]
+        selected_year = user_data["bookings"][current_booking_number][booking_date_parameter]["year"]
+        selected_date = f"{selected_day:02d}-{selected_month:02d}-{selected_year}"
+
+        return selected_date
+    return None
+
+
+def update_date_selection_buttons(
+    user_data: UserDataDataclass, booking_date_parameter: Literal["from_date", "to_date"]
+) -> InlineKeyboardMarkup:
+    current_booking_number = user_data["current_booking_number"]
+    day = user_data["bookings"][current_booking_number][booking_date_parameter]["day"]
+    month = user_data["bookings"][current_booking_number][booking_date_parameter]["month"]
+    year = user_data["bookings"][current_booking_number][booking_date_parameter]["year"]
+
+    return prepare_date_keyboard(day, month, year)
+
+
+def adjust_minute(
+    user_data: UserDataDataclass, increment: int, booking_time_parameter: Literal["from_time", "to_time"]
+) -> None:
+    current_booking_number = user_data["current_booking_number"]
+
+    minute = user_data["bookings"][current_booking_number][booking_time_parameter]["minute"]
+    minute += increment
+    if minute >= MAX_MINUTES:
+        minute = 0
+    elif minute < 0:
+        minute = 45
+    user_data["bookings"][current_booking_number][booking_time_parameter]["minute"] = minute
+
+
+def adjust_hour(
+    user_data: UserDataDataclass, increment: int, booking_time_parameter: Literal["from_time", "to_time"]
+) -> None:
+    current_booking_number = user_data["current_booking_number"]
+
+    hour = user_data["bookings"][current_booking_number][booking_time_parameter]["hour"]
+    hour += increment
+    if hour >= MAX_HOURS:
+        hour = 0
+    elif hour < 0:
+        hour = 23
+    user_data["bookings"][current_booking_number][booking_time_parameter]["hour"] = hour
+
+
+def handle_time_selection(
+    user_action: str, user_data: UserDataDataclass, booking_time_parameter: Literal["from_time", "to_time"]
+) -> str | None:
+    current_booking_number = user_data["current_booking_number"]
+
+    if user_action == "minute_up":
+        adjust_minute(user_data, MINUTE_INCREMENT, booking_time_parameter)
+    elif user_action == "minute_down":
+        adjust_minute(user_data, -MINUTE_INCREMENT, booking_time_parameter)
+    elif user_action == "hour_up":
+        adjust_hour(user_data, HOUR_INCREMENT, booking_time_parameter)
+    elif user_action == "hour_down":
+        adjust_hour(user_data, -HOUR_INCREMENT, booking_time_parameter)
+    elif user_action == "time_done":
+        selected_hour = user_data["bookings"][current_booking_number][booking_time_parameter]["hour"]
+        selected_minute = user_data["bookings"][current_booking_number][booking_time_parameter]["minute"]
+        selected_time = f"{selected_hour:02d}:{selected_minute:02d}"
+
+        return selected_time
+    return None
+
+
+def update_time_selection_buttons(
+    user_data: UserDataDataclass, booking_time_parameter: Literal["from_time", "to_time"]
+) -> InlineKeyboardMarkup:
+    current_booking_number = user_data["current_booking_number"]
+
+    hour = user_data["bookings"][current_booking_number][booking_time_parameter]["hour"]
+    minute = user_data["bookings"][current_booking_number][booking_time_parameter]["minute"]
+
+    return prepare_time_keyboard(hour, minute)
+
+
+def get_summary_text(user_data: UserDataDataclass) -> str:
+    current_booking_number = user_data["current_booking_number"]
+
+    location = user_data["bookings"][current_booking_number]["location"]
+    specialization = user_data["bookings"][current_booking_number]["specialization"]
+    clinic = user_data["bookings"][current_booking_number]["clinic"]
+    doctor = user_data["bookings"][current_booking_number]["doctor"]
+    from_date = user_data["bookings"][current_booking_number]["from_date"]
+    from_date_str = f"{from_date['day']:02d}-{from_date['month']:02d}-{from_date['year']:02d}"
+    from_time = user_data["bookings"][current_booking_number]["from_time"]
+    from_time_str = f"{from_time['hour']:02d}:{from_time['minute']:02d}"
+    to_date = user_data["bookings"][current_booking_number]["to_date"]
+    to_date_str = f"{to_date['day']:02d}-{to_date['month']:02d}-{to_date['year']:02d}"
+    to_time = user_data["bookings"][current_booking_number]["to_time"]
+    to_time_str = f"{to_time['hour']:02d}:{to_time['minute']:02d}"
+
+    summary_text = f"Miasto: {location['location_name']}\n"
+    summary_text += f"Specjalizacja: {specialization['specialization_name']}\n"
+    summary_text += f"Klinika: {clinic['clinic_name']}\n"
+    summary_text += f"Doktor: {doctor['doctor_name']}\n"
+    summary_text += f"Data od: {from_date_str}\n"
+    summary_text += f"Godzina od: {from_time_str}\n"
+    summary_text += f"Data do: {to_date_str}\n"
+    summary_text += f"Godzina do: {to_time_str}\n"
+
+    return summary_text
+
+
+async def prepare_summary(user_data: UserDataDataclass, update_message: Message) -> None:
+    summary_text = get_summary_text(user_data)
+
+    keyboard = [
+        [InlineKeyboardButton("Tak", callback_data=YES_ANSWER)],
+        [InlineKeyboardButton("Nie", callback_data=NO_ANSWER)],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update_message.reply_text(
+        f"\u2754 {summary_text}\nPodsumowanie jest prawidłowe?",
+        reply_markup=reply_markup,
+    )

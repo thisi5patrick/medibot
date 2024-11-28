@@ -257,10 +257,13 @@ class MedicoverClient:
         self,
         region_id: int,
         specialization_id: int,
+        from_date: str,
+        from_time: str,
+        to_time: str,
         doctor_id: int | None = None,
         clinic_id: int | None = None,
-        **kwargs: Any,
     ) -> list[dict[str, Any]]:
+        search_since_formatted = datetime.strptime(from_date, "%d-%m-%Y").isoformat()
         async with AsyncClient(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
             response = await client.post(
                 AVAILABLE_SLOTS,
@@ -270,9 +273,9 @@ class MedicoverClient:
                     "serviceIds": [specialization_id],
                     "clinicIds": [clinic_id] if clinic_id else [],
                     "doctorIds": [doctor_id] if doctor_id else [],
-                    "searchSince": kwargs["from_date"],
-                    "startTime": kwargs["from_time"],
-                    "endTime": kwargs["to_time"],
+                    "searchSince": search_since_formatted,
+                    "startTime": from_time,
+                    "endTime": to_time,
                 },
                 headers=Headers({"X-Requested-With": "XMLHttpRequest"}),
             )

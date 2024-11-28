@@ -39,22 +39,22 @@ class MonitoringDate(TypedDict):
 
 
 class MonitoringTime(TypedDict):
-    hour: str
-    minute: str
+    hour: int
+    minute: int
 
 
 class Bookings(TypedDict, total=False):
     location: Location
     specialization: Specialization
     clinic: Clinic
-    doctor: Doctor | None
-    from_date: MonitoringDate | None
-    from_time: MonitoringTime | None
-    to_date: MonitoringDate | None
-    to_time: MonitoringTime | None
+    doctor: Doctor
+    from_date: MonitoringDate
+    from_time: MonitoringTime
+    to_date: MonitoringDate
+    to_time: MonitoringTime
 
-    is_active: bool
-    is_done: bool
+    booking_hash: str
+    message_id: int
 
 
 class UserDataDataclass(TypedDict):
