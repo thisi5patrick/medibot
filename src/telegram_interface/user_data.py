@@ -62,3 +62,4 @@ class UserDataDataclass(TypedDict):
     history: UserDataHistory
     bookings: dict[int, Bookings]
     current_booking_number: int
+    booking_hashes: dict[str, int]

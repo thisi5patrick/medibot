@@ -989,10 +989,15 @@ async def read_create_monitoring(update: Update, context: ContextTypes.DEFAULT_T
 
     summary_text = get_summary_text(user_data)
 
-    await query.edit_message_text(f"✅ Tworzenie monitoringu dla parametrów:\n{summary_text}")
+    await query.edit_message_text(f"\u2705 Tworzenie monitoringu dla parametrów:\n{summary_text}")
 
     current_booking_number = user_data["current_booking_number"]
     task_hash = user_data["bookings"][current_booking_number]["booking_hash"]
+
+    if user_data.get("booking_hashes") is None:
+        user_data["booking_hashes"] = {}
+
+    user_data["booking_hashes"][task_hash] = current_booking_number
 
     context.application.create_task(
         create_monitoring_task(update, context), update=update, name=f"{user_chat_id}_{task_hash}"

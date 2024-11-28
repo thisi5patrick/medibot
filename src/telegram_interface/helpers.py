@@ -273,20 +273,21 @@ def update_time_selection_buttons(
     return prepare_time_keyboard(hour, minute)
 
 
-def get_summary_text(user_data: UserDataDataclass) -> str:
-    current_booking_number = user_data["current_booking_number"]
+def get_summary_text(user_data: UserDataDataclass, booking_number: int | None = None) -> str:
+    if booking_number is None:
+        booking_number = user_data["current_booking_number"]
 
-    location = user_data["bookings"][current_booking_number]["location"]
-    specialization = user_data["bookings"][current_booking_number]["specialization"]
-    clinic = user_data["bookings"][current_booking_number]["clinic"]
-    doctor = user_data["bookings"][current_booking_number]["doctor"]
-    from_date = user_data["bookings"][current_booking_number]["from_date"]
+    location = user_data["bookings"][booking_number]["location"]
+    specialization = user_data["bookings"][booking_number]["specialization"]
+    clinic = user_data["bookings"][booking_number]["clinic"]
+    doctor = user_data["bookings"][booking_number]["doctor"]
+    from_date = user_data["bookings"][booking_number]["from_date"]
     from_date_str = f"{from_date['day']:02d}-{from_date['month']:02d}-{from_date['year']:02d}"
-    from_time = user_data["bookings"][current_booking_number]["from_time"]
+    from_time = user_data["bookings"][booking_number]["from_time"]
     from_time_str = f"{from_time['hour']:02d}:{from_time['minute']:02d}"
-    to_date = user_data["bookings"][current_booking_number]["to_date"]
+    to_date = user_data["bookings"][booking_number]["to_date"]
     to_date_str = f"{to_date['day']:02d}-{to_date['month']:02d}-{to_date['year']:02d}"
-    to_time = user_data["bookings"][current_booking_number]["to_time"]
+    to_time = user_data["bookings"][booking_number]["to_time"]
     to_time_str = f"{to_time['hour']:02d}:{to_time['minute']:02d}"
 
     summary_text = f"Miasto: {location['location_name']}\n"
