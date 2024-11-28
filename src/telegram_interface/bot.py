@@ -15,8 +15,10 @@ from telegram.ext import (
     filters,
 )
 
-from src.telegram_interface.commands.find_appointments import (
-    find_appointments,
+from src.telegram_interface.commands.active_monitorings import active_monitorings_entrypoint, cancel_monitoring
+from src.telegram_interface.commands.clear_search_history import clear_search_history_entrypoint
+from src.telegram_interface.commands.login import login, password, username
+from src.telegram_interface.commands.new_monitoring import (
     get_clinic_from_buttons,
     get_clinic_from_input,
     get_doctor_from_buttons,
@@ -33,6 +35,7 @@ from src.telegram_interface.commands.find_appointments import (
     get_to_date_from_input,
     get_to_time_from_buttons,
     get_to_time_from_input,
+    new_monitoring_entrypoint,
     read_clinic,
     read_create_monitoring,
     read_doctor,
@@ -40,8 +43,6 @@ from src.telegram_interface.commands.find_appointments import (
     read_specialization,
     verify_summary,
 )
-from src.telegram_interface.commands.login import login, password, username
-from src.telegram_interface.commands.monitorings import active_monitorings_command, cancel_monitoring
 from src.telegram_interface.states import (
     CANCEL_MONITORING,
     GET_CLINIC,
@@ -72,8 +73,9 @@ async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> N
     await application.bot.set_my_commands(
         [
             BotCommand("/login", "Login to Medicover"),
-            BotCommand("/monitor", "Create a new appointment monitor"),
+            BotCommand("/new_monitoring", "Create a new appointment monitoring"),
             BotCommand("/active_monitorings", "Show all your appointment monitorings"),
+            BotCommand("/clear_search_history", "Clear search history"),
             BotCommand("/help", "Show help message"),
         ]
     )
@@ -99,8 +101,8 @@ class TelegramBot:
             fallbacks=[],
         )
 
-        monitor_handler = ConversationHandler(
-            entry_points=[CommandHandler("monitor", find_appointments)],
+        monitoring_handler = ConversationHandler(
+            entry_points=[CommandHandler("new_monitoring", new_monitoring_entrypoint)],
             states={
                 GET_LOCATION: [
                     CallbackQueryHandler(get_location_from_buttons),
@@ -156,8 +158,8 @@ class TelegramBot:
             fallbacks=[],
         )
 
-        my_monitors_handler = ConversationHandler(
-            entry_points=[CommandHandler("active_monitorings", active_monitorings_command)],
+        active_monitorings = ConversationHandler(
+            entry_points=[CommandHandler("active_monitorings", active_monitorings_entrypoint)],
             states={
                 CANCEL_MONITORING: [
                     CallbackQueryHandler(cancel_monitoring),
@@ -166,8 +168,15 @@ class TelegramBot:
             fallbacks=[],
         )
 
+        clear_search_history_handler = ConversationHandler(
+            entry_points=[CommandHandler("clear_search_history", clear_search_history_entrypoint)],
+            states={},
+            fallbacks=[],
+        )
+
         self.bot.add_handler(login_handler)
-        self.bot.add_handler(monitor_handler)
-        self.bot.add_handler(my_monitors_handler)
+        self.bot.add_handler(monitoring_handler)
+        self.bot.add_handler(active_monitorings)
+        self.bot.add_handler(clear_search_history_handler)
 
         self.bot.run_polling()

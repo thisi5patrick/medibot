@@ -9,7 +9,7 @@ from src.telegram_interface.states import CANCEL_MONITORING
 from src.telegram_interface.user_data import UserDataDataclass
 
 
-async def active_monitorings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def active_monitorings_entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     chat = cast(Chat, update.effective_chat)
     user_chat_id = chat.id
 

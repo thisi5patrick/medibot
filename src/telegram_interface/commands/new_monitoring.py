@@ -66,7 +66,7 @@ MAX_HOURS = 24
 MAX_MONTHS = 12
 
 
-async def find_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def new_monitoring_entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message is None:
         return ConversationHandler.END
 
@@ -846,7 +846,7 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query_message.reply_text("Zacznijmy od poczatku")
 
         # TODO fix this -> it's not running correctly
-        return await find_appointments(update, context)
+        return await new_monitoring_entrypoint(update, context)
 
     summary_text = "Podsumowanie:\n"
     summary_text += get_summary_text(user_data)
