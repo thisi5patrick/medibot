@@ -81,6 +81,10 @@ async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> N
     )
 
 
+async def end_current_command(*args: Any, **kwargs: Any) -> int:
+    return ConversationHandler.END
+
+
 class TelegramBot:
     def __init__(self) -> None:
         persistence = PicklePersistence(filepath=os.environ["TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH"])
@@ -98,7 +102,13 @@ class TelegramBot:
                 PROVIDE_USERNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, username)],
                 PROVIDE_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, password)],
             },
-            fallbacks=[],
+            fallbacks=[
+                CommandHandler("active_monitorings", end_current_command),
+                CommandHandler("clear_search_history", end_current_command),
+                CommandHandler("help", end_current_command),
+                CommandHandler("new_monitoring", end_current_command),
+            ],
+            allow_reentry=True,
         )
 
         monitoring_handler = ConversationHandler(
@@ -155,7 +165,13 @@ class TelegramBot:
                     CallbackQueryHandler(read_create_monitoring),
                 ],
             },
-            fallbacks=[],
+            fallbacks=[
+                CommandHandler("active_monitorings", end_current_command),
+                CommandHandler("clear_search_history", end_current_command),
+                CommandHandler("help", end_current_command),
+                CommandHandler("login", end_current_command),
+            ],
+            allow_reentry=True,
         )
 
         active_monitorings = ConversationHandler(
@@ -165,18 +181,30 @@ class TelegramBot:
                     CallbackQueryHandler(cancel_monitoring),
                 ]
             },
-            fallbacks=[],
+            fallbacks=[
+                CommandHandler("new_monitoring", end_current_command),
+                CommandHandler("clear_search_history", end_current_command),
+                CommandHandler("help", end_current_command),
+                CommandHandler("login", end_current_command),
+            ],
+            allow_reentry=True,
         )
 
         clear_search_history_handler = ConversationHandler(
             entry_points=[CommandHandler("clear_search_history", clear_search_history_entrypoint)],
             states={},
-            fallbacks=[],
+            fallbacks=[
+                CommandHandler("active_monitorings", end_current_command),
+                CommandHandler("new_monitoring", end_current_command),
+                CommandHandler("help", end_current_command),
+                CommandHandler("login", end_current_command),
+            ],
+            allow_reentry=True,
         )
 
-        self.bot.add_handler(login_handler)
-        self.bot.add_handler(monitoring_handler)
-        self.bot.add_handler(active_monitorings)
-        self.bot.add_handler(clear_search_history_handler)
+        self.bot.add_handler(login_handler, 1)
+        self.bot.add_handler(monitoring_handler, 2)
+        self.bot.add_handler(active_monitorings, 3)
+        self.bot.add_handler(clear_search_history_handler, 4)
 
         self.bot.run_polling()

@@ -67,14 +67,16 @@ MAX_MONTHS = 12
 
 
 async def new_monitoring_entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message is None:
-        return ConversationHandler.END
+    message = update.message
+    if message is None:
+        callback_query = cast(CallbackQuery, update.callback_query)
+        message = cast(Message, callback_query.message)
 
     user_data = cast(UserDataDataclass, context.user_data)
 
     client = user_data.get("medicover_client")
     if not client:
-        await update.message.reply_text("Please log in first.")
+        await message.reply_text("Please log in first.")
         return ConversationHandler.END
 
     if user_data.get("history") is None:
@@ -95,12 +97,12 @@ async def new_monitoring_entrypoint(update: Update, context: ContextTypes.DEFAUL
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update.message.reply_text(
+        await message.reply_text(
             "Wpisz fragment szukanego miasta albo wybierz z ostatnio szukanych:", reply_markup=reply_markup
         )
 
     else:
-        await update.message.reply_text("Wpisz fragment szukanego miasta:")
+        await message.reply_text("Wpisz fragment szukanego miasta:")
     return GET_LOCATION
 
 
@@ -198,7 +200,7 @@ async def read_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     if not bookings:
         user_data["bookings"] = {}
 
-    next_booking_number = next(reversed(user_data["bookings"])) + 1
+    next_booking_number = next(reversed(user_data["bookings"]), 0) + 1
 
     user_data["current_booking_number"] = next_booking_number
     user_data["bookings"][next_booking_number] = {"location": location}
@@ -844,8 +846,6 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if data == NO_ANSWER:
         await query_message.reply_text("Zacznijmy od poczatku")
-
-        # TODO fix this -> it's not running correctly
         return await new_monitoring_entrypoint(update, context)
 
     summary_text = "Podsumowanie:\n"
