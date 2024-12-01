@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from src.client import MedicoverClient
 
@@ -63,3 +63,4 @@ class UserDataDataclass(TypedDict):
     bookings: dict[int, Bookings]
     current_booking_number: int
     booking_hashes: dict[str, int]
+    language: Literal["en", "pl"]

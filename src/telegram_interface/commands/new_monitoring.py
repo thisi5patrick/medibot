@@ -16,6 +16,7 @@ from telegram import (
 from telegram.ext import ContextTypes, ConversationHandler
 
 from src.client import MedicoverClient
+from src.locale_handler import _
 from src.telegram_interface.helpers import (
     NO_ANSWER,
     YES_ANSWER,
@@ -76,7 +77,7 @@ async def new_monitoring_entrypoint(update: Update, context: ContextTypes.DEFAUL
 
     client = user_data.get("medicover_client")
     if not client:
-        await message.reply_text("Please log in first.")
+        await message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     if user_data.get("history") is None:
@@ -98,11 +99,15 @@ async def new_monitoring_entrypoint(update: Update, context: ContextTypes.DEFAUL
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await message.reply_text(
-            "Wpisz fragment szukanego miasta albo wybierz z ostatnio szukanych:", reply_markup=reply_markup
+            _(
+                "Type in a snippet of the city you are looking for, or select from your recent searches",
+                user_data["language"],
+            ),
+            reply_markup=reply_markup,
         )
 
     else:
-        await message.reply_text("Wpisz fragment szukanego miasta:")
+        await message.reply_text(_("Enter a fragment of the city you are looking for:", user_data["language"]))
     return GET_LOCATION
 
 
@@ -111,7 +116,7 @@ async def get_location_from_buttons(update: Update, context: ContextTypes.DEFAUL
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     query = cast(CallbackQuery, update.callback_query)
@@ -137,14 +142,17 @@ async def get_location_from_buttons(update: Update, context: ContextTypes.DEFAUL
     user_data["current_booking_number"] = next_booking_number
     user_data["bookings"][next_booking_number] = {"location": location}
 
-    await query.edit_message_text(f"\u2705 Wybrano miasto: {location_text}")
+    await query.edit_message_text(f"\u2705 {_("Selected city:",user_data["language"])} {location_text}")
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_specialization_keyboard(user_data)
 
     await query_message.reply_text(
-        "Wpisz fragment szukanej specjalizacji albo wybierz z ostatnio szukanych",
+        _(
+            "Type in a snippet of the specialization you are looking for, or select from your recent searches",
+            user_data["language"],
+        ),
         reply_markup=reply_markup,
     )
 
@@ -156,7 +164,7 @@ async def get_location_from_input(update: Update, context: ContextTypes.DEFAULT_
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     update_message = cast(Message, update.message)
@@ -164,14 +172,17 @@ async def get_location_from_input(update: Update, context: ContextTypes.DEFAULT_
 
     locations = await client.get_region(location_input)
     if not locations:
-        await update_message.reply_text("Nie znaleziono miasta. Wpisz ponownie.")
+        await update_message.reply_text(_("City not found. Please re-enter.", user_data["language"]))
         return GET_LOCATION
 
     user_data["history"]["temp_data"]["locations"] = {location["id"]: location["text"] for location in locations}
     keyboard = [[InlineKeyboardButton(location["text"], callback_data=str(location["id"]))] for location in locations]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update_message.reply_text("Wybierz miasto z listy:", reply_markup=reply_markup)
+    await update_message.reply_text(
+        _("Select a city from the list:", user_data["language"]),
+        reply_markup=reply_markup,
+    )
 
     return READ_LOCATION
 
@@ -181,7 +192,7 @@ async def read_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     query = cast(CallbackQuery, update.callback_query)
@@ -205,14 +216,17 @@ async def read_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     user_data["current_booking_number"] = next_booking_number
     user_data["bookings"][next_booking_number] = {"location": location}
 
-    await query.edit_message_text(f"\u2705 Wybrano miasto: {location_text}")
+    await query.edit_message_text(f"\u2705 {_("Selected city:",user_data["language"])} {location_text}")
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_specialization_keyboard(user_data)
 
     await query_message.reply_text(
-        "Wpisz fragment szukanej specjalizacji albo wybierz z ostatnio szukanych",
+        _(
+            "Type in a snippet of the specialization you are looking for, or select from your recent searches",
+            user_data["language"],
+        ),
         reply_markup=reply_markup,
     )
 
@@ -224,7 +238,7 @@ async def get_specialization_from_buttons(update: Update, context: ContextTypes.
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     query = cast(CallbackQuery, update.callback_query)
@@ -243,14 +257,18 @@ async def get_specialization_from_buttons(update: Update, context: ContextTypes.
     current_booking_number = user_data["current_booking_number"]
     user_data["bookings"][current_booking_number]["specialization"] = specialization
 
-    await query.edit_message_text(f"\u2705 Wybrano specjalizacje: {specialization_text}")
+    await query.edit_message_text(f"\u2705 {_("Selected specialization:",user_data["language"])} {specialization_text}")
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_clinic_keyboard(user_data, specialization_id)
 
     await query_message.reply_text(
-        "Wpisz fragment szukanej kliniki albo wybierz z ostatnio szukanych", reply_markup=reply_markup
+        _(
+            "Type in a snippet of the clinic you are looking for, or select from your recent searches",
+            user_data["language"],
+        ),
+        reply_markup=reply_markup,
     )
 
     return GET_CLINIC
@@ -263,7 +281,7 @@ async def get_specialization_from_input(update: Update, context: ContextTypes.DE
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     specialization_input = cast(str, update_message.text)
@@ -281,11 +299,14 @@ async def get_specialization_from_input(update: Update, context: ContextTypes.DE
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update_message.reply_text("Wybierz specjalizację:", reply_markup=reply_markup)
+        await update_message.reply_text(
+            _("Select specialization:", user_data["language"]),
+            reply_markup=reply_markup,
+        )
 
         return READ_SPECIALIZATION
 
-    await update_message.reply_text("Nie znaleziono specjalizacji. Wpisz ponownie.")
+    await update_message.reply_text(_("Specialization not found. Please re-enter.", user_data["language"]))
     return GET_SPECIALIZATION
 
 
@@ -307,13 +328,17 @@ async def read_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE
     booking_number = user_data["current_booking_number"]
     user_data["bookings"][booking_number]["specialization"] = specialization
 
-    await query.edit_message_text(text=f"\u2705 Wybrano specjalizacje: {specialization_text}")
+    await query.edit_message_text(f"\u2705 {_("Selected specialization:",user_data["language"])} {specialization_text}")
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_clinic_keyboard(user_data, user_input_specialization_id)
     await query_message.reply_text(
-        "Wpisz fragment szukanej kliniki albo wybierz z ostatnio szukanych", reply_markup=reply_markup
+        _(
+            "Type in a snippet of the clinic you are looking for, or select from your recent searches",
+            user_data["language"],
+        ),
+        reply_markup=reply_markup,
     )
 
     return GET_CLINIC
@@ -324,47 +349,48 @@ async def get_clinic_from_buttons(update: Update, context: ContextTypes.DEFAULT_
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     query = cast(CallbackQuery, update.callback_query)
     await query.answer()
 
-    clinic_id = cast(str, query.data)
+    user_input_clinic_id = cast(str, query.data)
 
     current_booking_number = user_data["current_booking_number"]
 
     specialization_id = user_data["bookings"][current_booking_number]["specialization"]["specialization_id"]
 
-    if clinic_id == "any":
-        clinic_id = None  # type: ignore[assignment]
-        clinic_text = "Jakakolwiek"
-        user_data["bookings"][current_booking_number]["clinic"] = Clinic(
-            clinic_id=cast(None, clinic_id), clinic_name=clinic_text
-        )
+    if user_input_clinic_id == "any":
+        clinic_text = _("Any-her", user_data["language"])
+        clinic = Clinic(clinic_id=None, clinic_name=clinic_text)
     else:
         clinic = next(
             (
                 item
                 for item in user_data["history"]["clinics"][specialization_id]
-                if item["clinic_id"] == int(clinic_id)
+                if item["clinic_id"] == int(user_input_clinic_id)
             ),
-            None,
+            None,  # type: ignore
         )
         if clinic is None:
             return ConversationHandler.END
 
-        user_data["bookings"][current_booking_number]["clinic"] = clinic
-        clinic_text = clinic["clinic_name"]
+    user_data["bookings"][current_booking_number]["clinic"] = clinic
+    clinic_text = clinic["clinic_name"]
 
-    await query.edit_message_text(f"\u2705 Wybrano klinikę: {clinic_text}")
+    await query.edit_message_text(f"\u2705 {_("Selected clinic:",user_data["language"])} {clinic_text}")
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_doctor_keyboard(user_data, specialization_id)
 
     await query_message.reply_text(
-        "Wpisz fragment nazwy lekarza albo wybierz z ostatnio szukanych", reply_markup=reply_markup
+        _(
+            "Type in a snippet of the doctor you are looking for, or select from your recent searches",
+            user_data["language"],
+        ),
+        reply_markup=reply_markup,
     )
 
     return GET_DOCTOR
@@ -377,7 +403,7 @@ async def get_clinic_from_input(update: Update, context: ContextTypes.DEFAULT_TY
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     clinic_input = cast(str, update_message.text)
@@ -390,14 +416,14 @@ async def get_clinic_from_input(update: Update, context: ContextTypes.DEFAULT_TY
         user_data["history"]["temp_data"]["clinics"] = {clinic["id"]: clinic["text"] for clinic in clinics}
 
         keyboard = [[InlineKeyboardButton(clinic["text"], callback_data=str(clinic["id"]))] for clinic in clinics]
-        keyboard.append([InlineKeyboardButton("Jakakolwiek", callback_data="any")])
+        keyboard.append([InlineKeyboardButton(_("Any-her", user_data["language"]), callback_data="any")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update_message.reply_text("Wybierz klinike:", reply_markup=reply_markup)
+        await update_message.reply_text(_("Select clinic:", user_data["language"]), reply_markup=reply_markup)
 
         return READ_CLINIC
 
-    await update_message.reply_text("Nie znaleziono kliniki. Wpisz ponownie.")
+    await update_message.reply_text(_("Clinic not found. Please re-enter.", user_data["language"]))
 
     return GET_CLINIC
 
@@ -412,13 +438,13 @@ async def read_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     specialization_id = user_data["bookings"][booking_number]["specialization"]["specialization_id"]
 
     if query.data == "any":
-        specialization_text = "Jakakolwiek"
-        clinic = Clinic(clinic_id=None, clinic_name=specialization_text)
+        clinic_name = _("Any-her", user_data["language"])
+        clinic = Clinic(clinic_id=None, clinic_name=clinic_name)
     else:
         user_input_clinic_id = int(cast(str, query.data))
         temp_clinics = user_data["history"]["temp_data"]["clinics"]
-        specialization_text = temp_clinics[user_input_clinic_id]
-        clinic = Clinic(clinic_id=user_input_clinic_id, clinic_name=specialization_text)
+        clinic_name = temp_clinics[user_input_clinic_id]
+        clinic = Clinic(clinic_id=user_input_clinic_id, clinic_name=clinic_name)
 
         if specialization_id not in user_data["history"]["clinics"]:
             user_data["history"]["clinics"][specialization_id] = []
@@ -427,13 +453,17 @@ async def read_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     user_data["bookings"][booking_number]["clinic"] = clinic
 
-    await query.edit_message_text(f"\u2705 Wybrano klinikę: {specialization_text}")
+    await query.edit_message_text(f"\u2705 {_("Selected clinic:",user_data["language"])} {clinic_name}")
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_doctor_keyboard(user_data, specialization_id)
     await query_message.reply_text(
-        "Wpisz fragment nazwy lekarza albo wybierz z ostatnio szukanych", reply_markup=reply_markup
+        _(
+            "Type in a snippet of the doctor you are looking for, or select from your recent searches",
+            user_data["language"],
+        ),
+        reply_markup=reply_markup,
     )
 
     return GET_DOCTOR
@@ -444,47 +474,45 @@ async def get_doctor_from_buttons(update: Update, context: ContextTypes.DEFAULT_
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     query = cast(CallbackQuery, update.callback_query)
     await query.answer()
 
-    doctor_id = cast(str, query.data)
+    user_input_doctor_id = cast(str, query.data)
 
     current_booking_number = user_data["current_booking_number"]
 
     specialization_id = user_data["bookings"][current_booking_number]["specialization"]["specialization_id"]
 
-    if doctor_id == "any":
-        doctor_id = None  # type: ignore[assignment]
-        doctor_text = "Jakakolwiek"
-        user_data["bookings"][current_booking_number]["doctor"] = Doctor(
-            doctor_name=doctor_text, doctor_id=cast(None, doctor_id)
-        )
+    if user_input_doctor_id == "any":
+        doctor_text = _("Any-him", user_data["language"])
+        doctor = Doctor(doctor_name=doctor_text, doctor_id=None)
     else:
         doctor = next(
             (
                 item
                 for item in user_data["history"]["doctors"][specialization_id]
-                if item["doctor_id"] == int(doctor_id)
+                if item["doctor_id"] == int(user_input_doctor_id)
             ),
-            None,
+            None,  # type: ignore
         )
         if doctor is None:
             return ConversationHandler.END
 
-        user_data["bookings"][current_booking_number]["doctor"] = doctor
-        doctor_text = doctor["doctor_name"]
+    user_data["bookings"][current_booking_number]["doctor"] = doctor
+    doctor_text = doctor["doctor_name"]
 
-    await query.edit_message_text(f"\u2705 Wybrano lekarza: {doctor_text}")
+    await query.edit_message_text(f"\u2705 {_("Selected doctor:",user_data["language"])} {doctor_text}")
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_date_selection(user_data, "from_date")
 
     message = await query_message.reply_text(
-        "Wybierz datę od albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+        _("Select date FROM or enter in dd-mm-yyyy format, e.g. 04-11-2024", user_data["language"]),
+        reply_markup=reply_markup,
     )
     user_data["bookings"][current_booking_number]["message_id"] = message.message_id
 
@@ -498,7 +526,7 @@ async def get_doctor_from_input(update: Update, context: ContextTypes.DEFAULT_TY
     client = user_data.get("medicover_client")
     if not client:
         update_message = cast(Message, update.message)
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     doctor_input = cast(str, update_message.text)
@@ -512,14 +540,14 @@ async def get_doctor_from_input(update: Update, context: ContextTypes.DEFAULT_TY
         user_data["history"]["temp_data"]["doctors"] = {doctor["id"]: doctor["text"] for doctor in doctors}
 
         keyboard = [[InlineKeyboardButton(doctor["text"], callback_data=str(doctor["id"]))] for doctor in doctors]
-        keyboard.append([InlineKeyboardButton("Jakikolwiek", callback_data="any")])
+        keyboard.append([InlineKeyboardButton(_("Any-him", user_data["language"]), callback_data="any")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update_message.reply_text("Wybierz lekarza:", reply_markup=reply_markup)
+        await update_message.reply_text(_("Select doctor:", user_data["language"]), reply_markup=reply_markup)
 
         return READ_DOCTOR
 
-    await update_message.reply_text("Nie znaleziono lekarza. Wpisz ponownie.")
+    await update_message.reply_text(_("Doctor not found. Please re-enter.", user_data["language"]))
 
     return GET_DOCTOR
 
@@ -534,7 +562,7 @@ async def read_doctor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     specialization_id = user_data["bookings"][booking_number]["specialization"]["specialization_id"]
 
     if query.data == "any":
-        doctor_text = "Jakikolwiek"
+        doctor_text = _("Any-him", user_data["language"])
         doctor = Doctor(doctor_name=doctor_text, doctor_id=None)
     else:
         user_input_doctor_id = int(cast(str, query.data))
@@ -549,14 +577,15 @@ async def read_doctor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     user_data["bookings"][booking_number]["doctor"] = doctor
 
-    await query.edit_message_text(f"\u2705 Wybrano lekarza: {doctor_text}")
+    await query.edit_message_text(f"\u2705 {_("Selected doctor:",user_data["language"])} {doctor_text}")
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_date_selection(user_data, "from_date")
 
     await query_message.reply_text(
-        "Wybierz datę od albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+        _("Select date FROM or enter in dd-mm-yyyy format, e.g. 04-11-2024", user_data["language"]),
+        reply_markup=reply_markup,
     )
 
     return GET_FROM_DATE
@@ -570,7 +599,9 @@ async def get_from_date_from_input(update: Update, context: ContextTypes.DEFAULT
     try:
         date_object = datetime.strptime(date_input, "%d-%m-%Y")
     except ValueError:
-        await update_message.reply_text("Podany format daty jest nieprawidłowy. Wpisz ponownie.")
+        await update_message.reply_text(
+            _("The date format you entered is invalid. Please re-enter.", user_data["language"])
+        )
         return GET_FROM_DATE
 
     current_booking_number = user_data["current_booking_number"]
@@ -583,7 +614,7 @@ async def get_from_date_from_input(update: Update, context: ContextTypes.DEFAULT
         message_id=user_data["bookings"][current_booking_number]["message_id"],
     )
 
-    await update_message.reply_text(f"\u2705 Wybrano datę szukania od: {date_input}")
+    await update_message.reply_text(f"\u2705 {_("Search date selected from:",user_data["language"])} {date_input}")
 
     hour = 7
     minute = 0
@@ -591,11 +622,12 @@ async def get_from_date_from_input(update: Update, context: ContextTypes.DEFAULT
     current_booking_number = user_data["current_booking_number"]
     user_data["bookings"][current_booking_number]["from_time"] = MonitoringTime(hour=hour, minute=minute)
 
-    reply_markup = prepare_time_keyboard(hour, minute)
+    reply_markup = prepare_time_keyboard(hour, minute, user_data["language"])
 
     query_message = cast(Message, update.message)
     message = await query_message.reply_text(
-        "Szukaj terminów po godzinie albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
+        _("Look for appointments AFTER the hour or enter in HH:MM format, e.g. 10:00", user_data["language"]),
+        reply_markup=reply_markup,
     )
     user_data["bookings"][current_booking_number]["message_id"] = message.message_id
 
@@ -616,14 +648,15 @@ async def get_from_date_from_buttons(update: Update, context: ContextTypes.DEFAU
 
         try:
             await query.edit_message_text(
-                "Wybierz datę od albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+                _("Select date FROM or enter in dd-mm-yyyy format, e.g. 04-11-2024", user_data["language"]),
+                reply_markup=reply_markup,
             )
         except telegram.error.BadRequest:
             pass
 
         return GET_FROM_DATE
 
-    await query.edit_message_text(f"\u2705 Wybrano datę od: {selected_date}")
+    await query.edit_message_text(f"\u2705 {_("Search date selected from:",user_data["language"])} {selected_date}")
 
     query_message = cast(Message, query.message)
 
@@ -633,10 +666,11 @@ async def get_from_date_from_buttons(update: Update, context: ContextTypes.DEFAU
     current_booking_number = user_data["current_booking_number"]
     user_data["bookings"][current_booking_number]["from_time"] = MonitoringTime(hour=hour, minute=minute)
 
-    reply_markup = prepare_time_keyboard(hour, minute)
+    reply_markup = prepare_time_keyboard(hour, minute, user_data["language"])
 
     message = await query_message.reply_text(
-        "Szukaj terminów po godzinie albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
+        _("Look for appointments AFTER the hour or enter in HH:MM format, e.g. 10:00", user_data["language"]),
+        reply_markup=reply_markup,
     )
     user_data["bookings"][current_booking_number]["message_id"] = message.message_id
 
@@ -651,7 +685,9 @@ async def get_from_time_from_input(update: Update, context: ContextTypes.DEFAULT
     try:
         time_object = datetime.strptime(time_input, "%H:%M")
     except ValueError:
-        await update_message.reply_text("Podany format godziny jest nieprawidłowy. Wpisz ponownie.")
+        await update_message.reply_text(
+            _("The time format you entered is invalid. Please re-enter.", user_data["language"])
+        )
         return GET_FROM_TIME
 
     current_booking_number = user_data["current_booking_number"]
@@ -664,12 +700,15 @@ async def get_from_time_from_input(update: Update, context: ContextTypes.DEFAULT
         message_id=user_data["bookings"][current_booking_number]["message_id"],
     )
 
-    await update_message.reply_text(f"\u2705 Wybrano szukanie terminów po godzinie: {time_input}")
+    await update_message.reply_text(
+        f"\u2705 {_("Selected to search for appointments after the hour:",user_data["language"])} {time_input}"
+    )
 
     reply_markup = prepare_date_selection(user_data, "to_date")
 
     await update_message.reply_text(
-        "Wybierz datę do albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+        _("Select date UNTIL or enter in dd-mm-yyyy format, e.g. 04-11-2024", user_data["language"]),
+        reply_markup=reply_markup,
     )
 
     return GET_TO_DATE
@@ -689,21 +728,25 @@ async def get_from_time_from_buttons(update: Update, context: ContextTypes.DEFAU
 
         try:
             await query.edit_message_text(
-                "Szukaj terminów po godzinie albo zapisz w formacie HH:MM, np. 10:00", reply_markup=reply_markup
+                _("Look for appointments AFTER the hour or enter in HH:MM format, e.g. 10:00", user_data["language"]),
+                reply_markup=reply_markup,
             )
         except telegram.error.BadRequest:
             pass
 
         return GET_FROM_TIME
 
-    await query.edit_message_text(f"\u2705 Wybrano szukanie terminów po godzinie: {selected_date}")
+    await query.edit_message_text(
+        f"\u2705 {_("Selected to search for appointments after the hour:",user_data["language"])} {selected_date}"
+    )
 
     query_message = cast(Message, query.message)
 
     reply_markup = prepare_date_selection(user_data, "to_date")
 
     await query_message.reply_text(
-        "Wybierz datę do albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+        _("Select date UNTIL or enter in dd-mm-yyyy format, e.g. 04-11-2024", user_data["language"]),
+        reply_markup=reply_markup,
     )
 
     return GET_TO_DATE
@@ -717,7 +760,9 @@ async def get_to_date_from_input(update: Update, context: ContextTypes.DEFAULT_T
     try:
         date_object = datetime.strptime(date_input, "%d-%m-%Y")
     except ValueError:
-        await update_message.reply_text("Podany format daty jest nieprawidłowy. Wpisz ponownie.")
+        await update_message.reply_text(
+            _("The date format you entered is invalid. Please re-enter.", user_data["language"])
+        )
         return GET_TO_DATE
 
     current_booking_number = user_data["current_booking_number"]
@@ -730,7 +775,7 @@ async def get_to_date_from_input(update: Update, context: ContextTypes.DEFAULT_T
         message_id=user_data["bookings"][current_booking_number]["message_id"],
     )
 
-    await update_message.reply_text(f"\u2705 Wybrano datę szukania do: {date_input}")
+    await update_message.reply_text(f"\u2705 {_("Search date selected until:",user_data["language"])} {date_input}")
 
     hour = 22
     minute = 0
@@ -738,11 +783,12 @@ async def get_to_date_from_input(update: Update, context: ContextTypes.DEFAULT_T
     current_booking_number = user_data["current_booking_number"]
     user_data["bookings"][current_booking_number]["to_time"] = MonitoringTime(hour=hour, minute=minute)
 
-    reply_markup = prepare_time_keyboard(hour, minute)
+    reply_markup = prepare_time_keyboard(hour, minute, user_data["language"])
 
     query_message = cast(Message, update.message)
     message = await query_message.reply_text(
-        "Szukaj terminów po godzinie albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
+        _("Look for appointments BEFORE the hour or enter in HH:MM format, e.g. 21:00", user_data["language"]),
+        reply_markup=reply_markup,
     )
     user_data["bookings"][current_booking_number]["message_id"] = message.message_id
 
@@ -763,14 +809,15 @@ async def get_to_date_from_buttons(update: Update, context: ContextTypes.DEFAULT
 
         try:
             await query.edit_message_text(
-                "Wybierz datę do albo zapisz w formacie dd-mm-rrrr, np. 04-11-2024", reply_markup=reply_markup
+                _("Select date UNTIL or enter in dd-mm-yyyy format, e.g. 04-11-2024", user_data["language"]),
+                reply_markup=reply_markup,
             )
         except telegram.error.BadRequest:
             pass
 
         return GET_TO_DATE
 
-    await query.edit_message_text(f"\u2705 Wybrano datę szukania do: {selected_date}")
+    await query.edit_message_text(f"\u2705 {_("Search date selected until:",user_data["language"])} {selected_date}")
 
     query_message = cast(Message, query.message)
 
@@ -780,10 +827,11 @@ async def get_to_date_from_buttons(update: Update, context: ContextTypes.DEFAULT
     current_booking_number = user_data["current_booking_number"]
     user_data["bookings"][current_booking_number]["to_time"] = MonitoringTime(hour=hour, minute=minute)
 
-    reply_markup = prepare_time_keyboard(hour, minute)
+    reply_markup = prepare_time_keyboard(hour, minute, user_data["language"])
 
     message = await query_message.reply_text(
-        "Szukaj terminów do godziny albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
+        _("Look for appointments BEFORE the hour or enter in HH:MM format, e.g. 21:00", user_data["language"]),
+        reply_markup=reply_markup,
     )
     user_data["bookings"][current_booking_number]["message_id"] = message.message_id
 
@@ -798,7 +846,9 @@ async def get_to_time_from_input(update: Update, context: ContextTypes.DEFAULT_T
     try:
         time_object = datetime.strptime(time_input, "%H:%M")
     except ValueError:
-        await update_message.reply_text("Podany format godziny jest nieprawidłowy. Wpisz ponownie.")
+        await update_message.reply_text(
+            _("The time format you entered is invalid. Please re-enter.", user_data["language"])
+        )
         return GET_TO_TIME
 
     current_booking_number = user_data["current_booking_number"]
@@ -811,7 +861,9 @@ async def get_to_time_from_input(update: Update, context: ContextTypes.DEFAULT_T
         message_id=user_data["bookings"][current_booking_number]["message_id"],
     )
 
-    await update_message.reply_text(f"\u2705 Wybrano szukanie terminów do godziny: {time_input}")
+    await update_message.reply_text(
+        f"\u2705 {_("Selected to search for appointments before the hour:",user_data["language"])} {time_input}"
+    )
 
     await prepare_summary(user_data, update_message)
 
@@ -832,14 +884,17 @@ async def get_to_time_from_buttons(update: Update, context: ContextTypes.DEFAULT
 
         try:
             await query.edit_message_text(
-                "Szukaj terminów po godzinie albo zapisz w formacie HH:MM, np. 21:00", reply_markup=reply_markup
+                _("Look for appointments BEFORE the hour or enter in HH:MM format, e.g. 21:00", user_data["language"]),
+                reply_markup=reply_markup,
             )
         except telegram.error.BadRequest:
             pass
 
         return GET_TO_TIME
 
-    await query.edit_message_text(f"\u2705 Wybrano szukanie terminów do godziny: {selected_date}")
+    await query.edit_message_text(
+        f"\u2705 {_("Selected to search for appointments before the hour:",user_data["language"])} {selected_date}"
+    )
 
     query_message = cast(Message, query.message)
     await prepare_summary(user_data, query_message)
@@ -856,10 +911,10 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     data = cast(str, query.data)
 
     if data == NO_ANSWER:
-        await query_message.reply_text("Zacznijmy od poczatku")
+        await query_message.reply_text(_("Let's start from the beginning", user_data["language"]))
         return await new_monitoring_entrypoint(update, context)
 
-    summary_text = "Podsumowanie:\n"
+    summary_text = f"{_("Summary:",user_data["language"])}\n"
     summary_text += get_summary_text(user_data)
 
     await query.edit_message_text(f"\u2705 {summary_text}")
@@ -885,7 +940,7 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     client = user_data.get("medicover_client")
     if not client:
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     available_slots = await client.get_available_slots(
@@ -906,21 +961,24 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             parsed_available_slot.append(slot)
 
     if not parsed_available_slot:
-        await query_message.reply_text("Brak dostępnych terminów dla wybranych parametrów.")
+        await query_message.reply_text(_("No appointments available for selected parameters.", user_data["language"]))
 
         keyboard = [
-            [InlineKeyboardButton("Tak", callback_data=YES_ANSWER)],
-            [InlineKeyboardButton("Nie", callback_data=NO_ANSWER)],
+            [InlineKeyboardButton(_("Yes", user_data["language"]), callback_data=YES_ANSWER)],
+            [InlineKeyboardButton(_("No", user_data["language"]), callback_data=NO_ANSWER)],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await query_message.reply_text("\u2754 Czy chcesz utworzyć monitoring?", reply_markup=reply_markup)
+        await query_message.reply_text(
+            f"\u2754 {_("Do you want to create a new monitoring?",user_data["language"])}", reply_markup=reply_markup
+        )
 
         return READ_CREATE_MONITORING
 
-    await query_message.reply_text("Dostępne terminy:")
+    await query_message.reply_text(_("Available appointments:", user_data["language"]))
 
     for slot in parsed_available_slot:
+        # TODO fix the translation
         await query_message.reply_text(
             f"Lekarz: {slot['doctorName']}\nKlinika: {slot['clinicName']}\nData: {slot['appointmentDate']}"
         )
@@ -974,8 +1032,9 @@ async def create_monitoring_task(update: Update, context: ContextTypes.DEFAULT_T
 
         if parsed_available_slot:
             for slot in parsed_available_slot:
-                await query_message.reply_text("Znaleziono nowy termin.")
+                await query_message.reply_text(_("A new appointment has been found.", user_data["language"]))
 
+                # TODO fix the translation
                 await query_message.reply_text(
                     f"Lekarz: {slot['doctorName']}\nKlinika: {slot['clinicName']}\nData: {slot['appointmentDate']}"
                 )
@@ -1000,7 +1059,9 @@ async def read_create_monitoring(update: Update, context: ContextTypes.DEFAULT_T
 
     summary_text = get_summary_text(user_data)
 
-    await query.edit_message_text(f"\u2705 Tworzenie monitoringu dla parametrów:\n{summary_text}")
+    await query.edit_message_text(
+        f"\u2705 {_("Creating monitoring for parameters:",user_data["language"])}\n{summary_text}"
+    )
 
     current_booking_number = user_data["current_booking_number"]
     task_hash = user_data["bookings"][current_booking_number]["booking_hash"]
@@ -1014,6 +1075,6 @@ async def read_create_monitoring(update: Update, context: ContextTypes.DEFAULT_T
         create_monitoring_task(update, context), update=update, name=f"{user_chat_id}_{task_hash}"
     )
 
-    await query_message.reply_text("Monitoring został utworzony.")
+    await query_message.reply_text(_("Monitoring has been set up.", user_data["language"]))
 
     return ConversationHandler.END

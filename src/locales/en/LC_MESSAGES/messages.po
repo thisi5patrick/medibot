@@ -1,0 +1,151 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgid "Please log in first."
+msgstr "Please log in first."
+
+msgid "Type in a snippet of the city you are looking for, or select from your recent searches"
+msgstr "Type in a snippet of the city you are looking for, or select from your recent searches"
+
+msgid "Enter a fragment of the city you are looking for:"
+msgstr "Enter a fragment of the city you are looking for:"
+
+msgid "City not found. Please re-enter."
+msgstr "City not found. Please re-enter."
+
+msgid "Select a city from the list:"
+msgstr "Select a city from the list:"
+
+msgid "Selected city:"
+msgstr "Selected city:"
+
+msgid "Type in a snippet of the specialization you are looking for, or select from your recent searches"
+msgstr "Type in a snippet of the specialization you are looking for, or select from your recent searches"
+
+msgid "Selected specialization:"
+msgstr "Selected specialization:"
+
+msgid "Select specialization:"
+msgstr "Select specialization:"
+
+msgid "Specialization not found. Please re-enter."
+msgstr "Specialization not found. Please re-enter."
+
+msgid "Type in a snippet of the clinic you are looking for, or select from your recent searches"
+msgstr "Type in a snippet of the clinic you are looking for, or select from your recent searches"
+
+msgid "Selected clinic:"
+msgstr "Selected clinic:"
+
+msgid "Select clinic:"
+msgstr "Select clinic:"
+
+msgid "Clinic not found. Please re-enter."
+msgstr "Clinic not found. Please re-enter."
+
+msgid "Any-her"
+msgstr "Any"
+
+msgid "Any-him"
+msgstr "Any"
+
+msgid "Type in a snippet of the doctor you are looking for, or select from your recent searches"
+msgstr "Type in a snippet of the doctor you are looking for, or select from your recent searches"
+
+msgid "Selected doctor:"
+msgstr "Selected doctor:"
+
+msgid "Select doctor:"
+msgstr "Select doctor:"
+
+msgid "Doctor not found. Please re-enter."
+msgstr "Doctor not found. Please re-enter."
+
+msgid "The date format you entered is invalid. Please re-enter."
+msgstr "The date format you entered is invalid. Please re-enter."
+
+msgid "The time format you entered is invalid. Please re-enter."
+msgstr "The time format you entered is invalid. Please re-enter."
+
+msgid "Look for appointments AFTER the hour or enter in HH:MM format, e.g. 10:00"
+msgstr "Look for appointments AFTER the hour or enter in HH:MM format, e.g. 10:00"
+
+msgid "Selected to search for appointments after the hour:"
+msgstr "Selected to search for appointments after the hour:"
+
+msgid "Select date FROM or enter in dd-mm-yyyy format, e.g. 04-11-2024"
+msgstr "Select date FROM or enter in dd-mm-yyyy format, e.g. 04-11-2024"
+
+msgid "Search date selected from:"
+msgstr "Search date selected from:"
+
+msgid "Select date UNTIL or enter in dd-mm-yyyy format, e.g. 04-11-2024"
+msgstr "Select date UNTIL or enter in dd-mm-yyyy format, e.g. 04-11-2024"
+
+msgid "Search date selected until:"
+msgstr "Search date selected until:"
+
+msgid "Look for appointments BEFORE the hour or enter in HH:MM format, e.g. 21:00"
+msgstr "Look for appointments BEFORE the hour or enter in HH:MM format, e.g. 21:00"
+
+msgid "Selected to search for appointments before the hour:"
+msgstr "Selected to search for appointments before the hour:"
+
+msgid "Let's start from the beginning"
+msgstr "Let's start from the beginning"
+
+msgid "Summary:"
+msgstr "Summary:"
+
+msgid "No appointments available for selected parameters"
+msgstr "No appointments available for selected parameters."
+
+msgid "Yes"
+msgstr "Yes"
+
+msgid "No"
+msgstr "No"
+
+msgid "Do you want to create a new monitoring?"
+msgstr "Do you want to create a new monitoring?"
+
+msgid "Available appointments:"
+msgstr "Available appointments:"
+
+msgid "A new appointment has been found."
+msgstr "A new appointment has been found."
+
+msgid "Creating monitoring for parameters:"
+msgstr "Creating monitoring for parameters:"
+
+msgid "Monitoring has been set up."
+msgstr "Monitoring has been set up."
+
+msgid "Done"
+msgstr "Done"
+
+msgid "City:"
+msgstr "City:"
+
+msgid "Specialization:"
+msgstr "Specialization:"
+
+msgid "Clinic:"
+msgstr "Clinic:"
+
+msgid "Doctor:"
+msgstr "Doctor:"
+
+msgid "Date from:"
+msgstr "Date from:"
+
+msgid "Time from:"
+msgstr "Time from:"
+
+msgid "Date before:"
+msgstr "Date before:"
+
+msgid "Time before:"
+msgstr "Time before:"

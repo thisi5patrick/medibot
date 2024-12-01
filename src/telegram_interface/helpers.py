@@ -4,6 +4,7 @@ from typing import Literal
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from src.locale_handler import _
 from src.telegram_interface.user_data import UserDataDataclass
 
 YES_ANSWER = "yes"
@@ -16,7 +17,7 @@ MAX_HOURS = 24
 MAX_MONTHS = 12
 
 
-def prepare_date_keyboard(day: int, month: int, year: int) -> InlineKeyboardMarkup:
+def prepare_date_keyboard(day: int, month: int, year: int, language: str) -> InlineKeyboardMarkup:
     keyboard = [
         [
             InlineKeyboardButton("↑", callback_data="day_up"),
@@ -34,7 +35,7 @@ def prepare_date_keyboard(day: int, month: int, year: int) -> InlineKeyboardMark
             InlineKeyboardButton("↓", callback_data="year_down"),
         ],
         [
-            InlineKeyboardButton("Done", callback_data="date_done"),
+            InlineKeyboardButton(_("Done", language), callback_data="date_done"),
         ],
     ]
 
@@ -58,12 +59,12 @@ def prepare_date_selection(
 
     user_data["bookings"][current_booking_number][booking_date_type] = {"day": day, "month": month, "year": year}
 
-    reply_markup = prepare_date_keyboard(day, month, year)
+    reply_markup = prepare_date_keyboard(day, month, year, language=user_data["language"])
 
     return reply_markup
 
 
-def prepare_time_keyboard(hour: int, minute: int) -> InlineKeyboardMarkup:
+def prepare_time_keyboard(hour: int, minute: int, language: str) -> InlineKeyboardMarkup:
     keyboard = [
         [
             InlineKeyboardButton("↑", callback_data="hour_up"),
@@ -78,7 +79,7 @@ def prepare_time_keyboard(hour: int, minute: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton("↓", callback_data="minute_down"),
         ],
         [
-            InlineKeyboardButton("Done", callback_data="time_done"),
+            InlineKeyboardButton(_("Done", language), callback_data="time_done"),
         ],
     ]
 
@@ -113,7 +114,7 @@ def prepare_clinic_keyboard(user_data: UserDataDataclass, specialization_id: int
     else:
         clinic_buttons = []
     keyboard = [
-        [InlineKeyboardButton("Jakakolwiek", callback_data="any")],
+        [InlineKeyboardButton(_("Any-her", user_data["language"]), callback_data="any")],
         *clinic_buttons,
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -128,7 +129,7 @@ def prepare_doctor_keyboard(user_data: UserDataDataclass, specialization_id: int
     else:
         doctor_buttons = []
     keyboard = [
-        [InlineKeyboardButton("Jakikolwiek", callback_data="any")],
+        [InlineKeyboardButton(_("Any-him", user_data["language"]), callback_data="any")],
         *doctor_buttons,
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -209,7 +210,7 @@ def update_date_selection_buttons(
     month = user_data["bookings"][current_booking_number][booking_date_parameter]["month"]
     year = user_data["bookings"][current_booking_number][booking_date_parameter]["year"]
 
-    return prepare_date_keyboard(day, month, year)
+    return prepare_date_keyboard(day, month, year, language=user_data["language"])
 
 
 def adjust_minute(
@@ -270,7 +271,7 @@ def update_time_selection_buttons(
     hour = user_data["bookings"][current_booking_number][booking_time_parameter]["hour"]
     minute = user_data["bookings"][current_booking_number][booking_time_parameter]["minute"]
 
-    return prepare_time_keyboard(hour, minute)
+    return prepare_time_keyboard(hour, minute, language=user_data["language"])
 
 
 def get_summary_text(user_data: UserDataDataclass, booking_number: int | None = None) -> str:
@@ -290,14 +291,14 @@ def get_summary_text(user_data: UserDataDataclass, booking_number: int | None = 
     to_time = user_data["bookings"][booking_number]["to_time"]
     to_time_str = f"{to_time['hour']:02d}:{to_time['minute']:02d}"
 
-    summary_text = f"Miasto: {location['location_name']}\n"
-    summary_text += f"Specjalizacja: {specialization['specialization_name']}\n"
-    summary_text += f"Klinika: {clinic['clinic_name']}\n"
-    summary_text += f"Doktor: {doctor['doctor_name']}\n"
-    summary_text += f"Data od: {from_date_str}\n"
-    summary_text += f"Godzina od: {from_time_str}\n"
-    summary_text += f"Data do: {to_date_str}\n"
-    summary_text += f"Godzina do: {to_time_str}\n"
+    summary_text = f"{_("City:",user_data["language"])} {location['location_name']}\n"
+    summary_text += f"{_("Specialization:",user_data["language"])} {specialization['specialization_name']}\n"
+    summary_text += f"{_("Clinic:",user_data["language"])} {clinic['clinic_name']}\n"
+    summary_text += f"{_("Doctor:",user_data["language"])} {doctor['doctor_name']}\n"
+    summary_text += f"{_("Date from:",user_data["language"])} {from_date_str}\n"
+    summary_text += f"{_("Time from:",user_data["language"])} {from_time_str}\n"
+    summary_text += f"{_("Date before:",user_data["language"])} {to_date_str}\n"
+    summary_text += f"{_("Time before:",user_data["language"])} {to_time_str}\n"
 
     return summary_text
 
