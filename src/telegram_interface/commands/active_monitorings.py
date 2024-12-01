@@ -4,6 +4,7 @@ from typing import cast
 from telegram import CallbackQuery, Chat, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
+from src.locale_handler import _
 from src.telegram_interface.helpers import get_summary_text
 from src.telegram_interface.states import CANCEL_MONITORING
 from src.telegram_interface.user_data import UserDataDataclass
@@ -18,14 +19,14 @@ async def active_monitorings_entrypoint(update: Update, context: ContextTypes.DE
 
     client = user_data.get("medicover_client")
     if not client:
-        await update_message.reply_text("Please log in first.")
+        await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
     all_tasks = asyncio.all_tasks()
     user_tasks = [task for task in all_tasks if task.get_name().startswith(f"{user_chat_id}_")]
 
     if not user_tasks:
-        await update_message.reply_text("Brak aktywnych monitoringów")
+        await update_message.reply_text(_("No active monitorings.", user_data["language"]))
         return ConversationHandler.END
 
     for task in user_tasks:
@@ -33,7 +34,7 @@ async def active_monitorings_entrypoint(update: Update, context: ContextTypes.DE
         booking_number = user_data["booking_hashes"][task_hash]
 
         keyboard = [
-            [InlineKeyboardButton("Usuń monitoring", callback_data=task.get_name())],
+            [InlineKeyboardButton(_("Delete monitoring", user_data["language"]), callback_data=task.get_name())],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -62,10 +63,10 @@ async def cancel_monitoring(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if task.get_name() == data:
             task.cancel()
             user_data["booking_hashes"].pop(data.split("_")[-1])
-            await query_message.edit_text("Monitoring usunięty")
+            await query_message.edit_text(_("Monitoring has been deleted.", user_data["language"]))
 
     if not user_tasks:
-        await query_message.reply_text("Brak aktywnych monitoringów")
+        await query_message.reply_text(_("No active monitorings.", user_data["language"]))
         return ConversationHandler.END
 
     return CANCEL_MONITORING

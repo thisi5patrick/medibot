@@ -149,3 +149,27 @@ msgstr "Date before:"
 
 msgid "Time before:"
 msgstr "Time before:"
+
+msgid "No active monitorings."
+msgstr "No active monitorings."
+
+msgid "Delete monitoring"
+msgstr "Delete monitoring"
+
+msgid "Monitoring has been deleted."
+msgstr "Monitoring has been deleted."
+
+msgid "Search history cleared."
+msgstr "Search history cleared."
+
+msgid "Log in to Medicover.\n\nPlease provide your username:"
+msgstr "Log in to Medicover.\n\nPlease provide your username:"
+
+msgid "Please provide your password:"
+msgstr "Please provide your password:"
+
+msgid "Login attempt successful."
+msgstr "Login attempt successful."
+
+msgid "Login failed. Please try again."
+msgstr "Login failed. Please try again."

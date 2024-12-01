@@ -64,3 +64,5 @@ class UserDataDataclass(TypedDict):
     current_booking_number: int
     booking_hashes: dict[str, int]
     language: Literal["en", "pl"]
+    username: str
+    password: str

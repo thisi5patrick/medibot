@@ -3,6 +3,7 @@ from typing import cast
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
 
+from src.locale_handler import _
 from src.telegram_interface.user_data import UserDataDataclass
 
 
@@ -13,6 +14,6 @@ async def clear_search_history_entrypoint(update: Update, context: ContextTypes.
     user_data = cast(UserDataDataclass, context.user_data)
     user_data["history"] = {"locations": [], "specializations": [], "clinics": {}, "doctors": {}, "temp_data": {}}
 
-    await update.message.reply_text("Wyczyszczono historię wyszukiwania.")
+    await update.message.reply_text(_("Search history cleared.", user_data["language"]))
 
     return ConversationHandler.END

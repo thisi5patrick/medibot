@@ -149,3 +149,27 @@ msgstr "Data do:"
 
 msgid "Time before:"
 msgstr "Godzina do:"
+
+msgid "No active monitorings."
+msgstr "Brak aktywnych monitoringów."
+
+msgid "Delete monitoring"
+msgstr "Usuń monitoring"
+
+msgid "Monitoring has been deleted."
+msgstr "Monitoring usunięty"
+
+msgid "Search history cleared."
+msgstr "Wyczyszczono historię wyszukiwania."
+
+msgid "Log in to Medicover.\n\nPlease provide your username:"
+msgstr "Zaloguj się do Medicover.\n\nPodaj swój username:"
+
+msgid "Please provide your password:"
+msgstr "Podaj swoje hasło:"
+
+msgid "Login attempt successful."
+msgstr "Próba logowania powiodła się."
+
+msgid "Login failed. Please try again."
+msgstr "Logowanie nie powiodło się. Spróbuj ponownie."
