@@ -408,18 +408,23 @@ async def read_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     await query.answer()
 
-    user_input_clinic_id = int(cast(str, query.data))
-    temp_clinics = user_data["history"]["temp_data"]["clinics"]
-    specialization_text = temp_clinics[user_input_clinic_id]
-    clinic = Clinic(clinic_id=user_input_clinic_id, clinic_name=specialization_text)
-
     booking_number = user_data["current_booking_number"]
     specialization_id = user_data["bookings"][booking_number]["specialization"]["specialization_id"]
 
-    if specialization_id not in user_data["history"]["clinics"]:
-        user_data["history"]["clinics"][specialization_id] = []
+    if query.data == "any":
+        specialization_text = "Jakakolwiek"
+        clinic = Clinic(clinic_id=None, clinic_name=specialization_text)
+    else:
+        user_input_clinic_id = int(cast(str, query.data))
+        temp_clinics = user_data["history"]["temp_data"]["clinics"]
+        specialization_text = temp_clinics[user_input_clinic_id]
+        clinic = Clinic(clinic_id=user_input_clinic_id, clinic_name=specialization_text)
 
-    user_data["history"]["clinics"][specialization_id].append(clinic)
+        if specialization_id not in user_data["history"]["clinics"]:
+            user_data["history"]["clinics"][specialization_id] = []
+
+        user_data["history"]["clinics"][specialization_id].append(clinic)
+
     user_data["bookings"][booking_number]["clinic"] = clinic
 
     await query.edit_message_text(f"\u2705 Wybrano klinikę: {specialization_text}")
@@ -525,20 +530,26 @@ async def read_doctor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     await query.answer()
 
-    user_input_doctor_id = int(cast(str, query.data))
-    temp_doctors = user_data["history"]["temp_data"]["doctors"]
-    specialization_text = temp_doctors[user_input_doctor_id]
-    doctor = Doctor(doctor_name=specialization_text, doctor_id=user_input_doctor_id)
-
     booking_number = user_data["current_booking_number"]
     specialization_id = user_data["bookings"][booking_number]["specialization"]["specialization_id"]
 
-    if specialization_id not in user_data["history"]["doctors"]:
-        user_data["history"]["doctors"][specialization_id] = []
+    if query.data == "any":
+        doctor_text = "Jakikolwiek"
+        doctor = Doctor(doctor_name=doctor_text, doctor_id=None)
+    else:
+        user_input_doctor_id = int(cast(str, query.data))
+        temp_doctors = user_data["history"]["temp_data"]["doctors"]
+        doctor_text = temp_doctors[user_input_doctor_id]
+        doctor = Doctor(doctor_name=doctor_text, doctor_id=user_input_doctor_id)
 
-    user_data["history"]["doctors"][specialization_id].append(doctor)
+        if specialization_id not in user_data["history"]["doctors"]:
+            user_data["history"]["doctors"][specialization_id] = []
 
-    await query.edit_message_text(f"\u2705 Wybrano lekarza: {specialization_text}")
+        user_data["history"]["doctors"][specialization_id].append(doctor)
+
+    user_data["bookings"][booking_number]["doctor"] = doctor
+
+    await query.edit_message_text(f"\u2705 Wybrano lekarza: {doctor_text}")
 
     query_message = cast(Message, query.message)
 
