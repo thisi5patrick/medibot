@@ -177,3 +177,21 @@ msgstr "Logowanie nie powiodło się. Spróbuj ponownie."
 
 msgid "Welcome to the unofficial Medicover Bot."
 msgstr "Witamy w nieoficialnym Medicover Bot."
+
+msgid "Select the setting you want to change:"
+msgstr "Wybierz ustawienie, które chcesz zmienić:"
+
+msgid "Change language"
+msgstr "Zmień jezyk"
+
+msgid "Select the language you want to use:"
+msgstr "Wybierz jezyk, którym chcesz się posługiwać:"
+
+msgid "English"
+msgstr "Angielski"
+
+msgid "Polish"
+msgstr "Polski"
+
+msgid "Language changed to:"
+msgstr "Jezyk zmieniony na:"

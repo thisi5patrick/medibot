@@ -43,9 +43,15 @@ from src.telegram_interface.commands.new_monitoring import (
     read_specialization,
     verify_summary,
 )
+from src.telegram_interface.commands.settings import (
+    read_change_language,
+    settings_entrypoint,
+    show_change_language,
+)
 from src.telegram_interface.commands.start import start_entrypoint
 from src.telegram_interface.states import (
     CANCEL_MONITORING,
+    CHANGE_LANGUAGE,
     GET_CLINIC,
     GET_DOCTOR,
     GET_FROM_DATE,
@@ -56,11 +62,14 @@ from src.telegram_interface.states import (
     GET_TO_TIME,
     PROVIDE_PASSWORD,
     PROVIDE_USERNAME,
+    READ_CHANGE_LANGUAGE,
     READ_CLINIC,
     READ_CREATE_MONITORING,
     READ_DOCTOR,
     READ_LOCATION,
     READ_SPECIALIZATION,
+    SELECTING_SETTING,
+    SHOW_CHANGE_LANGUAGE,
     VERIFY_SUMMARY,
 )
 
@@ -78,6 +87,7 @@ async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> N
             BotCommand("/new_monitoring", "Create a new appointment monitoring"),
             BotCommand("/active_monitorings", "Show all your appointment monitorings"),
             BotCommand("/clear_search_history", "Clear search history"),
+            BotCommand("/settings", "Change the bot settings"),
             BotCommand("/help", "Show help message"),
         ]
     )
@@ -215,10 +225,51 @@ class TelegramBot:
             allow_reentry=True,
         )
 
+        change_language_handler = ConversationHandler(
+            entry_points=[CallbackQueryHandler(show_change_language, pattern=f"^{CHANGE_LANGUAGE}$")],
+            states={
+                SHOW_CHANGE_LANGUAGE: [
+                    CallbackQueryHandler(show_change_language),
+                ],
+                READ_CHANGE_LANGUAGE: [
+                    CallbackQueryHandler(read_change_language),
+                ],
+            },
+            fallbacks=[
+                CommandHandler("start", end_current_command),
+                CommandHandler("active_monitorings", end_current_command),
+                CommandHandler("new_monitoring", end_current_command),
+                CommandHandler("clear_search_history", end_current_command),
+                CommandHandler("help", end_current_command),
+                CommandHandler("login", end_current_command),
+            ],
+            allow_reentry=True,
+        )
+
+        settings_handler = ConversationHandler(
+            entry_points=[CommandHandler("settings", settings_entrypoint)],
+            states={
+                SELECTING_SETTING: [
+                    change_language_handler,
+                    # More settings
+                ],
+            },
+            fallbacks=[
+                CommandHandler("start", end_current_command),
+                CommandHandler("active_monitorings", end_current_command),
+                CommandHandler("new_monitoring", end_current_command),
+                CommandHandler("clear_search_history", end_current_command),
+                CommandHandler("help", end_current_command),
+                CommandHandler("login", end_current_command),
+            ],
+            allow_reentry=True,
+        )
+
         self.bot.add_handler(start_handler, 0)
         self.bot.add_handler(login_handler, 1)
         self.bot.add_handler(monitoring_handler, 2)
         self.bot.add_handler(active_monitorings, 3)
         self.bot.add_handler(clear_search_history_handler, 4)
+        self.bot.add_handler(settings_handler, 5)
 
         self.bot.run_polling()

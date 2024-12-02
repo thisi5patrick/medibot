@@ -176,3 +176,21 @@ msgstr "Login failed. Please try again."
 
 msgid "Welcome to the unofficial Medicover Bot."
 msgstr "Welcome to the unofficial Medicover Bot."
+
+msgid "Select the setting you want to change:"
+msgstr "Select the setting you want to change:"
+
+msgid "Change language"
+msgstr "Change language"
+
+msgid "Select the language you want to use:"
+msgstr "Select the language you want to use:"
+
+msgid "English"
+msgstr "English"
+
+msgid "Polish"
+msgstr "Polish"
+
+msgid "Language changed to:"
+msgstr "Language changed to:"
