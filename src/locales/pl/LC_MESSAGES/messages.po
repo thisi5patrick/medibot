@@ -173,3 +173,7 @@ msgstr "Próba logowania powiodła się."
 
 msgid "Login failed. Please try again."
 msgstr "Logowanie nie powiodło się. Spróbuj ponownie."
+
+
+msgid "Welcome to the unofficial Medicover Bot."
+msgstr "Witamy w nieoficialnym Medicover Bot."

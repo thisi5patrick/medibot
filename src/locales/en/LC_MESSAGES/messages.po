@@ -173,3 +173,6 @@ msgstr "Login attempt successful."
 
 msgid "Login failed. Please try again."
 msgstr "Login failed. Please try again."
+
+msgid "Welcome to the unofficial Medicover Bot."
+msgstr "Welcome to the unofficial Medicover Bot."

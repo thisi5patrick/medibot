@@ -43,6 +43,7 @@ from src.telegram_interface.commands.new_monitoring import (
     read_specialization,
     verify_summary,
 )
+from src.telegram_interface.commands.start import start_entrypoint
 from src.telegram_interface.states import (
     CANCEL_MONITORING,
     GET_CLINIC,
@@ -72,6 +73,7 @@ load_dotenv()
 async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> None:
     await application.bot.set_my_commands(
         [
+            BotCommand("/start", "Start the bot"),
             BotCommand("/login", "Login to Medicover"),
             BotCommand("/new_monitoring", "Create a new appointment monitoring"),
             BotCommand("/active_monitorings", "Show all your appointment monitorings"),
@@ -96,6 +98,13 @@ class TelegramBot:
             .persistence(persistence)
             .build()
         )
+
+        start_handler = ConversationHandler(
+            entry_points=[CommandHandler("start", start_entrypoint)],
+            states={},
+            fallbacks=[],
+        )
+
         login_handler = ConversationHandler(
             entry_points=[CommandHandler("login", login)],
             states={
@@ -103,6 +112,7 @@ class TelegramBot:
                 PROVIDE_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, password)],
             },
             fallbacks=[
+                CommandHandler("start", end_current_command),
                 CommandHandler("active_monitorings", end_current_command),
                 CommandHandler("clear_search_history", end_current_command),
                 CommandHandler("help", end_current_command),
@@ -166,6 +176,7 @@ class TelegramBot:
                 ],
             },
             fallbacks=[
+                CommandHandler("start", end_current_command),
                 CommandHandler("active_monitorings", end_current_command),
                 CommandHandler("clear_search_history", end_current_command),
                 CommandHandler("help", end_current_command),
@@ -182,6 +193,7 @@ class TelegramBot:
                 ]
             },
             fallbacks=[
+                CommandHandler("start", end_current_command),
                 CommandHandler("new_monitoring", end_current_command),
                 CommandHandler("clear_search_history", end_current_command),
                 CommandHandler("help", end_current_command),
@@ -194,6 +206,7 @@ class TelegramBot:
             entry_points=[CommandHandler("clear_search_history", clear_search_history_entrypoint)],
             states={},
             fallbacks=[
+                CommandHandler("start", end_current_command),
                 CommandHandler("active_monitorings", end_current_command),
                 CommandHandler("new_monitoring", end_current_command),
                 CommandHandler("help", end_current_command),
@@ -202,6 +215,7 @@ class TelegramBot:
             allow_reentry=True,
         )
 
+        self.bot.add_handler(start_handler, 0)
         self.bot.add_handler(login_handler, 1)
         self.bot.add_handler(monitoring_handler, 2)
         self.bot.add_handler(active_monitorings, 3)

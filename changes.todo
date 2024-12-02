@@ -5,10 +5,12 @@
 [] - Remove requirements.txt
 [] - Update README
 [] - Initialize telegram bot
-[] - Add languages to bot
+[X] - Add languages to bot
 [] - Update Dockerfile
 [] - Update setup.py
 [X] - Fix mypy
-[] - Make texts more pleasent to read
-[] - Add history for search parameters
-[] - Organize the persistence data
+[?] - Make texts more pleasent to read
+[X] - Add history for search parameters
+[X] - Organize the persistence data
+[] - Add settings
+[] - Add logging
