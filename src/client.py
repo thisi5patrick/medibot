@@ -352,18 +352,23 @@ class MedicoverClient:
                 selected_filters.append(available_filter)
         return selected_filters
 
-    async def get_appointments(self) -> list[dict[str, str]] | None:
-        # TODO: Needs refactoring
-        if self.sign_in_cookie:
-            async with AsyncClient(cookies=Cookies({".ASPXAUTH": self.sign_in_cookie})) as client:
-                response = await client.post(
-                    APPOINTMENTS, headers=Headers({"X-Requested-With": "XMLHttpRequest"}), data={"PageSize": 100}
-                )
-                if response.status_code == httpx.codes.OK:
-                    return cast(list[dict[str, str]], response.json().get("items"))
-                await self.log_in()
-                return None
-        return None
+    @with_login_retry
+    async def get_future_appointments(self) -> list[dict[str, str]]:
+        async with AsyncClient(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
+            response = await client.post(
+                APPOINTMENTS, headers=Headers({"X-Requested-With": "XMLHttpRequest"}), data={"PageSize": 1000}
+            )
+            response.raise_for_status()
+
+        items = response.json().get("items", [])
+        future_items = []
+        now = datetime.now()
+        for item in items:
+            appointment_date = datetime.fromisoformat(item["appointmentDate"])
+            if appointment_date > now:
+                future_items.append(item)
+
+        return future_items
 
     def extract_data_from_login_form(self, page_text: str) -> dict[str, str]:
         """Extract values from input fields and prepare data for login request."""

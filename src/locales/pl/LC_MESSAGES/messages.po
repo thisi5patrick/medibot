@@ -198,3 +198,12 @@ msgstr "Jezyk zmieniony na:"
 
 msgid "Clear search history"
 msgstr "Wyczyść historię wyszukiwania"
+
+msgid "Date:"
+msgstr "Data:"
+
+msgid "You have no future appointments."
+msgstr "Nie masz zaplanowanych wizyt."
+
+msgid "You have the following future appointments:"
+msgstr "Masz zaplanowane następujce wizyty:"

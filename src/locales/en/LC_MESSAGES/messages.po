@@ -197,3 +197,12 @@ msgstr "Language changed to:"
 
 msgid "Clear search history"
 msgstr "Clear search history"
+
+msgid "Date:"
+msgstr "Date:"
+
+msgid "You have no future appointments."
+msgstr "You have no future appointments."
+
+msgid "You have the following future appointments:"
+msgstr "You have the following future appointments:"
