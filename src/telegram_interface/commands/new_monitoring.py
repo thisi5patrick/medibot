@@ -60,12 +60,6 @@ from src.telegram_interface.user_data import (
 
 logger = logging.getLogger(__name__)
 
-MINUTE_INCREMENT = 15
-HOUR_INCREMENT = 1
-MAX_MINUTES = 60
-MAX_HOURS = 24
-MAX_MONTHS = 12
-
 
 async def new_monitoring_entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     message = update.message

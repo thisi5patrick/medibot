@@ -4,7 +4,7 @@
 [] - Remove medihunter_pushover.py
 [] - Remove requirements.txt
 [] - Update README
-[] - Initialize telegram bot
+[X] - Initialize telegram bot
 [X] - Add languages to bot
 [] - Update Dockerfile
 [] - Update setup.py
