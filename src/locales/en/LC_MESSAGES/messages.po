@@ -194,3 +194,6 @@ msgstr "Polish"
 
 msgid "Language changed to:"
 msgstr "Language changed to:"
+
+msgid "Clear search history"
+msgstr "Clear search history"

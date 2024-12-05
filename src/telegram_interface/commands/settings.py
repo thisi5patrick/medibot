@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from src.locale_handler import _
 from src.telegram_interface.states import (
     CHANGE_LANGUAGE,
+    CLEAR_SEARCH_HISTORY,
     READ_CHANGE_LANGUAGE,
     SELECTING_SETTING,
 )
@@ -18,6 +19,11 @@ async def settings_entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     keyboard = [
         [InlineKeyboardButton(_("Change language", user_data["language"]), callback_data=str(CHANGE_LANGUAGE))],
+        [
+            InlineKeyboardButton(
+                _("Clear search history", user_data["language"]), callback_data=str(CLEAR_SEARCH_HISTORY)
+            )
+        ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -60,5 +66,17 @@ async def read_change_language(update: Update, context: ContextTypes.DEFAULT_TYP
         language = _("English", user_data["language"])
 
     await query.edit_message_text(f"\u2705 {_("Language changed to:", user_data["language"])} {language}")
+
+    return ConversationHandler.END
+
+
+async def clear_search_history_entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = cast(CallbackQuery, update.callback_query)
+    query_message = cast(Message, query.message)
+
+    user_data = cast(UserDataDataclass, context.user_data)
+    user_data["history"] = {"locations": [], "specializations": [], "clinics": {}, "doctors": {}, "temp_data": {}}
+
+    await query_message.edit_text(_("Search history cleared.", user_data["language"]))
 
     return ConversationHandler.END
