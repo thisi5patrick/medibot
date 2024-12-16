@@ -11,6 +11,6 @@ HOST = "api-gateway-online24.medicover.pl"
 BASE_URL = SCHEMA + HOST
 
 FILTER_SEARCH_URL = BASE_URL + "/appointments/api/search-appointments/filters"
-APPOINTMENT_SEARCH_URL = BASE_URL + "/api/MyVisits/SearchVisitsToView"
+APPOINTMENT_SEARCH_URL = BASE_URL + "/appointments/api/person-appointments/appointments"
 REGION_SEARCH_URL = BASE_URL + "/service-selector-configurator/api/search-appointments/filters/initial-filters"
 AVAILABLE_SLOT_SEARCH_URL = BASE_URL + "/appointments/api/search-appointments/slots"

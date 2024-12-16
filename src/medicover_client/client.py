@@ -9,7 +9,7 @@ from typing import Any, Awaitable, Callable, TypedDict, TypeVar, cast
 
 import httpx
 from bs4 import BeautifulSoup, Tag
-from httpx import AsyncClient, Cookies, Headers, QueryParams
+from httpx import AsyncClient, Headers, QueryParams
 
 from src.medicover_client.api_urls import (
     APPOINTMENT_SEARCH_URL,
@@ -248,19 +248,20 @@ class MedicoverClient:
 
     @with_login_retry
     async def get_future_appointments(self) -> list[dict[str, str]]:
-        # TODO need fix for new implementation
-        async with AsyncClient(cookies=Cookies({".ASPXAUTH": cast(str, self.sign_in_cookie)})) as client:
-            response = await client.post(
-                APPOINTMENT_SEARCH_URL, headers=Headers({"X-Requested-With": "XMLHttpRequest"}), data={"PageSize": 1000}
+        today = date.today().strftime("%Y-%m-%d")
+
+        async with AsyncClient(headers=self.headers) as client:
+            response = await client.get(
+                APPOINTMENT_SEARCH_URL,
+                params={
+                    "Page": 1,
+                    "PageSize": 5000,
+                    "AppointmentState": "All",
+                    "dateFrom": today,
+                },
             )
             response.raise_for_status()
 
-        items = response.json().get("items", [])
-        future_items = []
-        now = datetime.now()
-        for item in items:
-            appointment_date = datetime.fromisoformat(item["appointmentDate"])
-            if appointment_date > now:
-                future_items.append(item)
+        items = cast(list[dict[str, str]], response.json().get("items", []))
 
-        return future_items
+        return items
