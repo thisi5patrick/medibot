@@ -27,3 +27,4 @@ repos:
           - pick
           - python-telegram-bot
           - python-dotenv
+          - asyncclick

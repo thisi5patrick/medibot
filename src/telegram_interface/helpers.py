@@ -5,6 +5,7 @@ from typing import Literal
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from src.locale_handler import _
+from src.medicover_client.client import FilterDataType
 from src.telegram_interface.user_data import UserDataDataclass
 
 YES_ANSWER = "yes"
@@ -105,7 +106,7 @@ def prepare_specialization_keyboard(user_data: UserDataDataclass) -> InlineKeybo
     return InlineKeyboardMarkup(keyboard)
 
 
-def prepare_clinic_keyboard(user_data: UserDataDataclass, specialization_id: int) -> InlineKeyboardMarkup:
+def prepare_clinic_keyboard(user_data: UserDataDataclass, specialization_id: str) -> InlineKeyboardMarkup:
     clinics = user_data["history"]["clinics"].get(specialization_id)
     if clinics:
         clinic_buttons = [
@@ -120,7 +121,7 @@ def prepare_clinic_keyboard(user_data: UserDataDataclass, specialization_id: int
     return InlineKeyboardMarkup(keyboard)
 
 
-def prepare_doctor_keyboard(user_data: UserDataDataclass, specialization_id: int) -> InlineKeyboardMarkup:
+def prepare_doctor_keyboard(user_data: UserDataDataclass, specialization_id: str) -> InlineKeyboardMarkup:
     doctors = user_data["history"]["doctors"].get(specialization_id)
     if doctors:
         doctor_buttons = [
@@ -316,3 +317,11 @@ async def prepare_summary(user_data: UserDataDataclass, update_message: Message)
         f"\u2754 {summary_text}\nPodsumowanie jest prawidłowe?",
         reply_markup=reply_markup,
     )
+
+
+def match_input_to_filter(user_text: str, filters_data: list[FilterDataType]) -> list[FilterDataType]:
+    selected_filters = []
+    for available_filter in filters_data:
+        if user_text.lower() in available_filter["value"].lower():
+            selected_filters.append(available_filter)
+    return selected_filters

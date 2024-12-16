@@ -4,8 +4,8 @@ from typing import cast
 from telegram import Message, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
-from src.client import MedicoverClient
 from src.locale_handler import _
+from src.medicover_client.client import MedicoverClient
 from src.telegram_interface.states import PROVIDE_PASSWORD, PROVIDE_USERNAME
 from src.telegram_interface.user_data import UserDataDataclass
 

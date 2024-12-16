@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
@@ -101,7 +102,11 @@ async def end_current_command(*args: Any, **kwargs: Any) -> int:
 
 class TelegramBot:
     def __init__(self) -> None:
-        persistence = PicklePersistence(filepath=os.environ["TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH"])
+        source_folder = Path(__file__).resolve().parent.parent.parent
+        pickle_file_path = Path(os.environ["TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH"])
+        file_path = source_folder / pickle_file_path
+
+        persistence = PicklePersistence(filepath=file_path)
 
         self.bot = (
             ApplicationBuilder()

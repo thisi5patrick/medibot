@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import logging
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import cast
 
 import telegram
@@ -15,14 +15,15 @@ from telegram import (
 )
 from telegram.ext import ContextTypes, ConversationHandler
 
-from src.client import MedicoverClient
 from src.locale_handler import _
+from src.medicover_client.client import MedicoverClient
 from src.telegram_interface.helpers import (
     NO_ANSWER,
     YES_ANSWER,
     get_summary_text,
     handle_date_selection,
     handle_time_selection,
+    match_input_to_filter,
     prepare_clinic_keyboard,
     prepare_date_selection,
     prepare_doctor_keyboard,
@@ -118,9 +119,7 @@ async def get_location_from_buttons(update: Update, context: ContextTypes.DEFAUL
 
     location_id = cast(str, query.data)
 
-    location = next(
-        (item for item in user_data["history"]["locations"] if item["location_id"] == int(location_id)), None
-    )
+    location = next((item for item in user_data["history"]["locations"] if item["location_id"] == location_id), None)
     if not location:
         return ConversationHandler.END
 
@@ -164,13 +163,18 @@ async def get_location_from_input(update: Update, context: ContextTypes.DEFAULT_
     update_message = cast(Message, update.message)
     location_input = cast(str, update_message.text)
 
-    locations = await client.get_region(location_input)
-    if not locations:
+    all_locations = await client.get_all_regions()
+
+    found_locations = match_input_to_filter(location_input, all_locations)
+
+    if not found_locations:
         await update_message.reply_text(_("City not found. Please re-enter.", user_data["language"]))
         return GET_LOCATION
 
-    user_data["history"]["temp_data"]["locations"] = {location["id"]: location["text"] for location in locations}
-    keyboard = [[InlineKeyboardButton(location["text"], callback_data=str(location["id"]))] for location in locations]
+    user_data["history"]["temp_data"]["locations"] = {location["id"]: location["value"] for location in found_locations}
+    keyboard = [
+        [InlineKeyboardButton(location["value"], callback_data=str(location["id"]))] for location in found_locations
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update_message.reply_text(
@@ -193,7 +197,7 @@ async def read_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     await query.answer()
 
-    user_input_location_id = int(cast(str, query.data))
+    user_input_location_id = cast(str, query.data)
     temp_locations = user_data["history"]["temp_data"]["locations"]
     location_text = temp_locations[user_input_location_id]
     location = Location(location_id=user_input_location_id, location_name=location_text)
@@ -238,7 +242,7 @@ async def get_specialization_from_buttons(update: Update, context: ContextTypes.
     query = cast(CallbackQuery, update.callback_query)
     await query.answer()
 
-    specialization_id = int(cast(str, query.data))
+    specialization_id = cast(str, query.data)
     specialization = next(
         (item for item in user_data["history"]["specializations"] if item["specialization_id"] == specialization_id),
         None,
@@ -280,28 +284,30 @@ async def get_specialization_from_input(update: Update, context: ContextTypes.DE
 
     specialization_input = cast(str, update_message.text)
     booking_number = user_data["current_booking_number"]
-    location_id: int = user_data["bookings"][booking_number]["location"]["location_id"]
+    location_id: str = user_data["bookings"][booking_number]["location"]["location_id"]
 
-    specializations = await client.get_specialization(specialization_input, location_id)
+    all_specializations = await client.get_all_specializations(location_id)
 
-    if specializations:
-        user_data["history"]["temp_data"]["specializations"] = {
-            specialization["id"]: specialization["text"] for specialization in specializations
-        }
+    found_specializations = match_input_to_filter(specialization_input, all_specializations)
 
-        keyboard = [[InlineKeyboardButton(spec["text"], callback_data=str(spec["id"]))] for spec in specializations]
+    if not found_specializations:
+        await update_message.reply_text(_("Specialization not found. Please re-enter.", user_data["language"]))
+        return GET_SPECIALIZATION
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
+    user_data["history"]["temp_data"]["specializations"] = {
+        specialization["id"]: specialization["value"] for specialization in found_specializations
+    }
 
-        await update_message.reply_text(
-            _("Select specialization:", user_data["language"]),
-            reply_markup=reply_markup,
-        )
+    keyboard = [[InlineKeyboardButton(spec["value"], callback_data=str(spec["id"]))] for spec in found_specializations]
 
-        return READ_SPECIALIZATION
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update_message.reply_text(_("Specialization not found. Please re-enter.", user_data["language"]))
-    return GET_SPECIALIZATION
+    await update_message.reply_text(
+        _("Select specialization:", user_data["language"]),
+        reply_markup=reply_markup,
+    )
+
+    return READ_SPECIALIZATION
 
 
 async def read_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -310,7 +316,7 @@ async def read_specialization(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await query.answer()
 
-    user_input_specialization_id = int(cast(str, query.data))
+    user_input_specialization_id = cast(str, query.data)
     temp_specializations = user_data["history"]["temp_data"]["specializations"]
     specialization_text = temp_specializations[user_input_specialization_id]
     specialization = Specialization(
@@ -363,7 +369,7 @@ async def get_clinic_from_buttons(update: Update, context: ContextTypes.DEFAULT_
             (
                 item
                 for item in user_data["history"]["clinics"][specialization_id]
-                if item["clinic_id"] == int(user_input_clinic_id)
+                if item["clinic_id"] == user_input_clinic_id
             ),
             None,  # type: ignore
         )
@@ -405,21 +411,24 @@ async def get_clinic_from_input(update: Update, context: ContextTypes.DEFAULT_TY
     location_id = user_data["bookings"][booking_number]["location"]["location_id"]
     specialization_id = user_data["bookings"][booking_number]["specialization"]["specialization_id"]
 
-    clinics = await client.get_clinic(clinic_input, location_id, specialization_id)
-    if clinics:
-        user_data["history"]["temp_data"]["clinics"] = {clinic["id"]: clinic["text"] for clinic in clinics}
+    all_clinics = await client.get_all_clinics(location_id, specialization_id)
 
-        keyboard = [[InlineKeyboardButton(clinic["text"], callback_data=str(clinic["id"]))] for clinic in clinics]
-        keyboard.append([InlineKeyboardButton(_("Any-her", user_data["language"]), callback_data="any")])
-        reply_markup = InlineKeyboardMarkup(keyboard)
+    found_clinics = match_input_to_filter(clinic_input, all_clinics)
 
-        await update_message.reply_text(_("Select clinic:", user_data["language"]), reply_markup=reply_markup)
+    if not found_clinics:
+        await update_message.reply_text(_("Clinic not found. Please re-enter.", user_data["language"]))
 
-        return READ_CLINIC
+        return GET_CLINIC
 
-    await update_message.reply_text(_("Clinic not found. Please re-enter.", user_data["language"]))
+    user_data["history"]["temp_data"]["clinics"] = {clinic["id"]: clinic["value"] for clinic in found_clinics}
 
-    return GET_CLINIC
+    keyboard = [[InlineKeyboardButton(clinic["value"], callback_data=str(clinic["id"]))] for clinic in found_clinics]
+    keyboard.append([InlineKeyboardButton(_("Any-her", user_data["language"]), callback_data="any")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update_message.reply_text(_("Select clinic:", user_data["language"]), reply_markup=reply_markup)
+
+    return READ_CLINIC
 
 
 async def read_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -435,7 +444,7 @@ async def read_clinic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         clinic_name = _("Any-her", user_data["language"])
         clinic = Clinic(clinic_id=None, clinic_name=clinic_name)
     else:
-        user_input_clinic_id = int(cast(str, query.data))
+        user_input_clinic_id = cast(str, query.data)
         temp_clinics = user_data["history"]["temp_data"]["clinics"]
         clinic_name = temp_clinics[user_input_clinic_id]
         clinic = Clinic(clinic_id=user_input_clinic_id, clinic_name=clinic_name)
@@ -488,7 +497,7 @@ async def get_doctor_from_buttons(update: Update, context: ContextTypes.DEFAULT_
             (
                 item
                 for item in user_data["history"]["doctors"][specialization_id]
-                if item["doctor_id"] == int(user_input_doctor_id)
+                if item["doctor_id"] == user_input_doctor_id
             ),
             None,  # type: ignore
         )
@@ -529,21 +538,24 @@ async def get_doctor_from_input(update: Update, context: ContextTypes.DEFAULT_TY
     specialization_id = user_data["bookings"][booking_number]["specialization"]["specialization_id"]
     clinic_id = user_data["bookings"][booking_number]["clinic"]["clinic_id"]
 
-    doctors = await client.get_doctor(doctor_input, location_id, specialization_id, clinic_id)
-    if doctors:
-        user_data["history"]["temp_data"]["doctors"] = {doctor["id"]: doctor["text"] for doctor in doctors}
+    all_doctors = await client.get_all_doctors(location_id, specialization_id, clinic_id)
 
-        keyboard = [[InlineKeyboardButton(doctor["text"], callback_data=str(doctor["id"]))] for doctor in doctors]
-        keyboard.append([InlineKeyboardButton(_("Any-him", user_data["language"]), callback_data="any")])
-        reply_markup = InlineKeyboardMarkup(keyboard)
+    found_doctors = match_input_to_filter(doctor_input, all_doctors)
 
-        await update_message.reply_text(_("Select doctor:", user_data["language"]), reply_markup=reply_markup)
+    if not found_doctors:
+        await update_message.reply_text(_("Doctor not found. Please re-enter.", user_data["language"]))
 
-        return READ_DOCTOR
+        return GET_DOCTOR
 
-    await update_message.reply_text(_("Doctor not found. Please re-enter.", user_data["language"]))
+    user_data["history"]["temp_data"]["doctors"] = {doctor["id"]: doctor["value"] for doctor in found_doctors}
 
-    return GET_DOCTOR
+    keyboard = [[InlineKeyboardButton(doctor["value"], callback_data=str(doctor["id"]))] for doctor in found_doctors]
+    keyboard.append([InlineKeyboardButton(_("Any-him", user_data["language"]), callback_data="any")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update_message.reply_text(_("Select doctor:", user_data["language"]), reply_markup=reply_markup)
+
+    return READ_DOCTOR
 
 
 async def read_doctor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int | None:
@@ -559,7 +571,7 @@ async def read_doctor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         doctor_text = _("Any-him", user_data["language"])
         doctor = Doctor(doctor_name=doctor_text, doctor_id=None)
     else:
-        user_input_doctor_id = int(cast(str, query.data))
+        user_input_doctor_id = cast(str, query.data)
         temp_doctors = user_data["history"]["temp_data"]["doctors"]
         doctor_text = temp_doctors[user_input_doctor_id]
         doctor = Doctor(doctor_name=doctor_text, doctor_id=user_input_doctor_id)
@@ -920,13 +932,9 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     clinic_id = user_data["bookings"][current_booking_number]["clinic"]["clinic_id"]
     doctor_id = user_data["bookings"][current_booking_number]["doctor"]["doctor_id"]
     from_date = user_data["bookings"][current_booking_number]["from_date"]
-    from_date_str = f"{from_date['day']}-{from_date['month']}-{from_date['year']}"
     from_time = user_data["bookings"][current_booking_number]["from_time"]
-    from_time_str = f"{from_time['hour']}:{from_time['minute']}"
     to_date = user_data["bookings"][current_booking_number]["to_date"]
-    to_date_str = f"{to_date['day']}-{to_date['month']}-{to_date['year']}"
     to_time = user_data["bookings"][current_booking_number]["to_time"]
-    to_time_str = f"{to_time['hour']}:{to_time['minute']}"
 
     user_data["bookings"][current_booking_number]["booking_hash"] = hashlib.md5(summary_text.encode()).hexdigest()
 
@@ -937,21 +945,34 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
+    from_date_obj = date(
+        year=from_date["year"],
+        month=from_date["month"],
+        day=from_date["day"],
+    )
+
     available_slots = await client.get_available_slots(
         location_id,
         specialization_id,
-        from_date_str,
-        from_time_str,
-        to_time_str,
+        from_date_obj,
         doctor_id,
         clinic_id,
     )
 
     parsed_available_slot = []
-    search_to_date = datetime.strptime(f"{to_date_str} {to_time_str}", "%d-%m-%Y %H:%M")
+    from_time_obj = time(hour=from_time["hour"], minute=from_time["minute"])
+    to_time_obj = time(hour=to_time["hour"], minute=to_time["minute"])
+
+    to_date_obj = datetime(
+        year=to_date["year"],
+        month=to_date["month"],
+        day=to_date["day"],
+        hour=23,
+        minute=59,
+    )
     for slot in available_slots:
         appointment_date = datetime.fromisoformat(slot["appointmentDate"])
-        if appointment_date < search_to_date:
+        if from_time_obj <= appointment_date.time() <= to_time_obj and appointment_date <= to_date_obj:
             parsed_available_slot.append(slot)
 
     if not parsed_available_slot:
@@ -974,7 +995,7 @@ async def verify_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     for slot in parsed_available_slot:
         # TODO fix the translation
         await query_message.reply_text(
-            f"Lekarz: {slot['doctorName']}\nKlinika: {slot['clinicName']}\nData: {slot['appointmentDate']}"
+            f"Lekarz: {slot["doctor"]["name"]}\nKlinika: {slot["clinic"]["name"]}\nData: {slot['appointmentDate']}"
         )
 
     # TODO add reserve slot
@@ -995,33 +1016,40 @@ async def create_monitoring_task(update: Update, context: ContextTypes.DEFAULT_T
     clinic_id = user_data["bookings"][current_booking_number]["clinic"]["clinic_id"]
     doctor_id = user_data["bookings"][current_booking_number]["doctor"]["doctor_id"]
     from_date = user_data["bookings"][current_booking_number]["from_date"]
-    from_date_str = f"{from_date['day']}-{from_date['month']}-{from_date['year']}"
     from_time = user_data["bookings"][current_booking_number]["from_time"]
-    from_time_str = f"{from_time['hour']}:{from_time['minute']}"
     to_date = user_data["bookings"][current_booking_number]["to_date"]
-    to_date_str = f"{to_date['day']}-{to_date['month']}-{to_date['year']}"
     to_time = user_data["bookings"][current_booking_number]["to_time"]
-    to_time_str = f"{to_time['hour']}:{to_time['minute']}"
 
-    kwargs = {
-        "region_id": location_id,
-        "specialization_id": specialization_id,
-        "doctor_id": doctor_id,
-        "clinic_id": clinic_id,
-        "from_date": from_date_str,
-        "from_time": from_time_str,
-        "to_time": to_time_str,
-    }
+    from_date_obj = date(
+        year=from_date["year"],
+        month=from_date["month"],
+        day=from_date["day"],
+    )
 
-    search_to_date = datetime.strptime(f"{to_date_str} {to_time_str}", "%d-%m-%Y %H:%M")
+    from_time_obj = time(hour=from_time["hour"], minute=from_time["minute"])
+    to_time_obj = time(hour=to_time["hour"], minute=to_time["minute"])
+
+    to_date_obj = datetime(
+        year=to_date["year"],
+        month=to_date["month"],
+        day=to_date["day"],
+        hour=23,
+        minute=59,
+    )
 
     while True:
-        slots = await client.get_available_slots(**kwargs)
+        available_slots = await client.get_available_slots(
+            location_id,
+            specialization_id,
+            from_date_obj,
+            doctor_id,
+            clinic_id,
+        )
         parsed_available_slot = []
 
-        for slot in slots:
+        for slot in available_slots:
             appointment_date = datetime.fromisoformat(slot["appointmentDate"])
-            if appointment_date < search_to_date:
+            if from_time_obj <= appointment_date.time() <= to_time_obj and appointment_date <= to_date_obj:
                 parsed_available_slot.append(slot)
 
         if parsed_available_slot:

@@ -12,6 +12,7 @@ beautifulsoup4 = "^4.12.3"
 pick = "^2.4.0"
 click = "^8.1.7"
 python-telegram-bot = "^21.6"
+asyncclick = "^8.1.7.2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -70,6 +71,9 @@ exclude = [
 ignore = [
     "PLR0913",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"app.py" = ["PLR0912", "PLR0915"]
 
 [tool.mypy]
 disallow_any_generics = true
