@@ -14,3 +14,4 @@
 [X] - Organize the persistence data
 [X] - Add settings
 [] - Add logging
+[] - Add notifications to app.py commands

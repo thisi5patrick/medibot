@@ -17,6 +17,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 from src.locale_handler import _
 from src.medicover_client.client import MedicoverClient
+from src.medicover_client.types import SlotItem
 from src.telegram_interface.helpers import (
     NO_ANSWER,
     YES_ANSWER,
@@ -1038,7 +1039,7 @@ async def create_monitoring_task(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     while True:
-        available_slots = await client.get_available_slots(
+        available_slots: list[SlotItem] = await client.get_available_slots(
             location_id,
             specialization_id,
             from_date_obj,
@@ -1058,7 +1059,9 @@ async def create_monitoring_task(update: Update, context: ContextTypes.DEFAULT_T
 
                 # TODO fix the translation
                 await query_message.reply_text(
-                    f"Lekarz: {slot['doctorName']}\nKlinika: {slot['clinicName']}\nData: {slot['appointmentDate']}"
+                    f"Lekarz: {slot["doctor"]["name"]}\n"
+                    f"Klinika: {slot["clinic"]["name"]}\n"
+                    f"Data: {slot["appointmentDate"]}"
                 )
             break
         logger.info("No slots available for given parameters. Trying again in 30 seconds...")

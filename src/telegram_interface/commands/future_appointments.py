@@ -5,6 +5,7 @@ from telegram import Message, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
 from src.locale_handler import _
+from src.medicover_client.types import AppointmentItem
 from src.telegram_interface.user_data import UserDataDataclass
 
 
@@ -16,7 +17,7 @@ async def future_appointments_entrypoint(update: Update, context: ContextTypes.D
         await update_message.reply_text(_("Please log in first.", user_data["language"]))
         return ConversationHandler.END
 
-    future_appointments = await client.get_future_appointments()
+    future_appointments: list[AppointmentItem] = await client.get_future_appointments()
 
     if not future_appointments:
         await update_message.reply_text(_("You have no future appointments.", user_data["language"]))
@@ -25,10 +26,10 @@ async def future_appointments_entrypoint(update: Update, context: ContextTypes.D
     await update_message.reply_text(_("You have the following future appointments:", user_data["language"]))
 
     for future_appointment in future_appointments:
-        appointment_date = datetime.fromisoformat(future_appointment["appointmentDate"])
-        doctor_name = future_appointment["doctorName"]
-        clinic_name = future_appointment["clinicName"]
-        specialization_name = future_appointment["specializationName"]
+        appointment_date = datetime.fromisoformat(future_appointment["date"])
+        doctor_name = future_appointment["doctor"]["name"]
+        clinic_name = future_appointment["clinic"]["name"]
+        specialization_name = future_appointment["specialty"]["name"]
 
         await update_message.reply_text(
             f"{_("Date:", user_data["language"])} {appointment_date.strftime("%H:%M %d-%m-%Y")}\n"

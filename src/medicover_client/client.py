@@ -21,6 +21,7 @@ from src.medicover_client.api_urls import (
     TOKEN_URL,
 )
 from src.medicover_client.exceptions import AuthenticationError, IncorrectLoginError
+from src.medicover_client.types import AppointmentItem, SlotItem
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,7 @@ class MedicoverClient:
         from_date: datetime | date,
         doctor_id: int | None = None,
         clinic_id: int | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[SlotItem]:
         search_since_formatted = from_date.strftime("%Y-%m-%d")
         async with AsyncClient(headers=self.headers) as client:
             response = await client.get(
@@ -188,11 +189,12 @@ class MedicoverClient:
                     "DoctorIds": [doctor_id] if doctor_id else [],
                     "StartTime": search_since_formatted,
                 },
+                timeout=15,
             )
             response.raise_for_status()
 
         response_json = response.json()
-        return cast(list[dict[str, Any]], response_json["items"])
+        return cast(list[SlotItem], response_json["items"])
 
     @with_login_retry
     async def get_all_regions(self) -> list[FilterDataType]:
@@ -247,7 +249,7 @@ class MedicoverClient:
         return cast(dict[str, list[FilterDataType]], response_json)
 
     @with_login_retry
-    async def get_future_appointments(self) -> list[dict[str, str]]:
+    async def get_future_appointments(self) -> list[AppointmentItem]:
         today = date.today().strftime("%Y-%m-%d")
 
         async with AsyncClient(headers=self.headers) as client:
@@ -262,6 +264,6 @@ class MedicoverClient:
             )
             response.raise_for_status()
 
-        items = cast(list[dict[str, str]], response.json().get("items", []))
+        items = cast(list[AppointmentItem], response.json().get("items", []))
 
         return items
