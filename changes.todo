@@ -1,13 +1,13 @@
-[] - Remove medicover_session.py
-[] - Remove medihunter_notifiers.py
-[] - Remove medihunter.py
-[] - Remove medihunter_pushover.py
-[] - Remove requirements.txt
+[X] - Remove medicover_session.py
+[X] - Remove medihunter_notifiers.py
+[X] - Remove medihunter.py
+[X] - Remove medihunter_pushover.py
+[X] - Remove requirements.txt
 [] - Update README
 [X] - Initialize telegram bot
 [X] - Add languages to bot
 [] - Update Dockerfile
-[] - Update setup.py
+[X] - Update setup.py
 [X] - Fix mypy
 [?] - Make texts more pleasent to read
 [X] - Add history for search parameters
@@ -15,3 +15,4 @@
 [X] - Add settings
 [] - Add logging
 [] - Add notifications to app.py commands
+[] - Add option to send to telegram a text and it should find an appointment (using agents?)

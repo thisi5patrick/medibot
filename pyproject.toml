@@ -1,23 +1,30 @@
 [tool.poetry]
-name = "medihunter-v2"
+name = "medibot"
 version = "0.1.0"
 description = ""
 authors = ["thisi5patrick"]
 readme = "README.md"
+
+packages = [
+    { include = "src" }
+]
+
+[tool.poetry.scripts]
+medibot = "src.app:cli"
+
 
 [tool.poetry.dependencies]
 python = "^3.12"
 httpx = "^0.27.2"
 beautifulsoup4 = "^4.12.3"
 pick = "^2.4.0"
-click = "^8.1.7"
 python-telegram-bot = "^21.6"
 asyncclick = "^8.1.7.2"
+pytest-dotenv = "^0.5.2"
 
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
-pytest-dotenv = "^0.5.2"
 ruff = "^0.7.2"
 pre-commit = "^4.0.1"
 mypy = "^1.13.0"
@@ -60,13 +67,6 @@ select = [
     "PTH", # flake8-use-pathli
 ]
 
-exclude = [
-    "medicover_session.py",
-    "medihunter.py",
-    "medihunter_notifiers.py",
-    "medihunter_pushover.py",
-    "setup.py",
-]
 
 ignore = [
     "PLR0913",
@@ -86,5 +86,3 @@ warn_no_return = true
 warn_return_any = true
 warn_redundant_casts = true
 strict_equality = true
-
-exclude = "medicover_session\\.py|medihunter\\.py|medihunter_notifiers\\.py|medihunter_pushover\\.py|setup\\.py"

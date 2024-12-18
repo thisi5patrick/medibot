@@ -36,7 +36,7 @@ poetry install
 The CLI lets users create appointment monitoring sessions and view future appointments through their Medicover account.
 #### Available Commands
 * `new_monitoring`: Create a new monitoring session to look for available appointments.
-  * Usage: `python app.py new_monitoring [options]`
+  * Usage: `python app.py new-monitoring [options]`
   * Options:
     * `--username`: Your Medicover username. (required)
     * `--password`: Your Medicover password. (required)
@@ -51,13 +51,13 @@ The CLI lets users create appointment monitoring sessions and view future appoin
 
 
 * `future_appointments`: View your future appointments.
-  * Usage: `python app.py future_appointments [options]`
+  * Usage: `python app.py future-appointments [options]`
   * Options:
     * `--username`: Your Medicover username. (required)
     * `--password`: Your Medicover password. (required)
 
 **Note**: If `required` options are not provided, the script will ask for it in an interactive mode.
-
+**Note 2**: You can install the package with `pip install -e .` which will let you to interact with the CLI via `medibot <command>` instead of `python app.py`
 ### 2. Telegram Bot
 
 The Telegram bot provides an easy-to-use interface to interact with the system. 

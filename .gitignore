@@ -111,7 +111,5 @@ visits.db.bak
 visits.db.dat
 visits.db.dir
 
-#local runs
-/appointments.json
 
 src/persistence_files/
