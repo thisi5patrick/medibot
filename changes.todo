@@ -6,7 +6,7 @@
 [] - Update README
 [X] - Initialize telegram bot
 [X] - Add languages to bot
-[] - Update Dockerfile
+[X] - Update Dockerfile
 [X] - Update setup.py
 [X] - Fix mypy
 [?] - Make texts more pleasent to read

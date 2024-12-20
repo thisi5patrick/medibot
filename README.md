@@ -113,3 +113,52 @@ Now you can run the bot on your machine with:
 ```shell
 make run-telegram
 ```
+
+## Docker
+
+The project provides Docker configurations to simplify the process of running both the CLI tool and the Telegram Bot. 
+Below are the steps to build and run the application using Docker.
+
+To simplify building and running the Docker containers a `Makefile` is provided with
+the necessary commands.
+
+### Building & Running Docker Images
+
+#### Telegram
+
+In order to build and run the image, use the command:
+
+```shell
+make docker-telegram
+```
+
+This will build the proper images and automatically start the Telegram bot.
+
+#### CLI
+
+This make command only builds the image:
+```shell
+make build-docker-cli
+```
+
+In order to run the image use:
+```shell
+docker run -it --rm cli-bot <your-options>
+```
+
+##### Example usage:
+1. Create a New Monitoring Session:
+```shell
+docker run -it --rm cli-bot new-monitoring
+```
+```shell
+docker run -it --rm cli-bot new-monitoring
+    --username=<your-username>
+    --password=<your-password>
+    etc.
+```
+
+2. View Future Appointments:
+```shell
+docker run -it --rm cli-bot future-appointments
+```
