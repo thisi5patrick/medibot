@@ -15,7 +15,9 @@ async def start_entrypoint(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user_data = cast(UserDataDataclass, context.user_data)
     update_message = cast(Message, update.message)
 
-    default_language = os.environ["DEFAULT_LANGUAGE"]
+    default_language = os.getenv("TELEGRAM_DEFAULT_LANGUAGE")
+    if default_language is None:
+        default_language = "en"
     if default_language not in SUPPORTED_LANGUAGES:
         await update_message.reply_text("Default language is not supported.")
         return ConversationHandler.END

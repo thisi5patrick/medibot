@@ -95,3 +95,21 @@ It offers the following commands (once logged in):
 * `/settings`: Modify bot settings (e.g., language).
 * `/help`: Access the help page.
 
+In order to set up and run your own telegram bot, you must provide the following env variable:
+```shell
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH=
+TELEGRAM_DEFAULT_LANGUAGE=
+```
+
+Place these variables into `.env` file or by exporting them like
+```shell
+export TELEGRAM_BOT_TOKEN=<your telegram bot token>
+export TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH=<path to pickle file with persistence data>
+export TELEGRAM_DEFAULT_LANGUAGE=<default language>
+```
+
+Now you can run the bot on your machine with:
+```shell
+make run-telegram
+```

@@ -295,3 +295,7 @@ class TelegramBot:
         self.bot.add_handler(future_appointments_handler, 5)
 
         self.bot.run_polling()
+
+
+if __name__ == "__main__":
+    TelegramBot()
