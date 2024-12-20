@@ -25,7 +25,7 @@ cd medibot
 ```
 
 Install the dependencies with poetry
-```bash
+```shell
 poetry install
 ```
 
@@ -36,7 +36,7 @@ poetry install
 The CLI lets users create appointment monitoring sessions and view future appointments through their Medicover account.
 #### Available Commands
 * `new_monitoring`: Create a new monitoring session to look for available appointments.
-  * Usage: `python app.py new-monitoring [options]`
+  * Usage: `python src/app.py new-monitoring [options]`
   * Options:
     * `--username`: Your Medicover username. (required)
     * `--password`: Your Medicover password. (required)
@@ -51,13 +51,37 @@ The CLI lets users create appointment monitoring sessions and view future appoin
 
 
 * `future_appointments`: View your future appointments.
-  * Usage: `python app.py future-appointments [options]`
+  * Usage: `python src/app.py future-appointments [options]`
   * Options:
     * `--username`: Your Medicover username. (required)
     * `--password`: Your Medicover password. (required)
 
 **Note**: If `required` options are not provided, the script will ask for it in an interactive mode.
-**Note 2**: You can install the package with `pip install -e .` which will let you to interact with the CLI via `medibot <command>` instead of `python app.py`
+**Note 2**: You can install the package with `pip install -e .` which will let you to interact with the CLI via `medibot <command>` instead of `python src/app.py`
+
+#### Notifications
+
+##### Telegram
+The CLI provides a way to send notifications to telegram when the monitoring has found an available appointment date.
+
+In order for this to work, you must set up a Bot in telegram by your own.
+
+More info can be found in [the documentation](https://core.telegram.org/bots).
+
+After setting up, you must gather these variables.
+```shell
+NOTIFIERS_TELEGRAM_CHAT_ID=<your chat id>
+NOTIFIERS_TELEGRAM_BOT_TOKEN=<your bot token>
+```
+
+You can find these data by following [this guide](https://docs.tracardi.com/qa/how_can_i_get_telegram_bot/).
+
+Place these variables into `.env` file or by exporting them like
+```shell
+export NOTIFIERS_TELEGRAM_CHAT_ID=<your chat id>
+export NOTIFIERS_TELEGRAM_BOT_TOKEN=<your bot token>
+```
+
 ### 2. Telegram Bot
 
 The Telegram bot provides an easy-to-use interface to interact with the system. 

@@ -21,6 +21,7 @@ pick = "^2.4.0"
 python-telegram-bot = "^21.6"
 asyncclick = "^8.1.7.2"
 pytest-dotenv = "^0.5.2"
+notifiers = {git = "https://github.com/liiight/notifiers.git", rev = "f97e7c7979c9598394cb2172e600055458f35d37"}
 
 
 [tool.poetry.group.dev.dependencies]
@@ -86,3 +87,7 @@ warn_no_return = true
 warn_return_any = true
 warn_redundant_casts = true
 strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "notifiers"
+ignore_missing_imports = true

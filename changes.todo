@@ -14,5 +14,7 @@
 [X] - Organize the persistence data
 [X] - Add settings
 [] - Add logging
-[] - Add notifications to app.py commands
+[X] - Add notifications to app.py commands
 [] - Add option to send to telegram a text and it should find an appointment (using agents?)
+[] - Install `notifiers` with stable version instead of `main`
+[] - Add more notifiers - only if needed

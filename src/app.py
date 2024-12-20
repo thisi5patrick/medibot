@@ -8,8 +8,10 @@ import httpx
 from dotenv import load_dotenv
 from pick import pick
 
+from src.app_notifiers import Notifier, TelegramNotifier
 from src.medicover_client.client import FilterDataType, MedicoverClient
 from src.medicover_client.exceptions import IncorrectLoginError
+from src.medicover_client.types import SlotItem
 
 load_dotenv()
 
@@ -89,6 +91,12 @@ def cli() -> None:
     default="23:00",
     show_default="23:00",
 )
+@click.option(
+    "--notifier",
+    "-n",
+    help="Notifier to send notifications to. ex. telegram",
+    type=click.Choice(["telegram"]),
+)
 async def new_monitoring(
     username: str,
     password: str,
@@ -100,6 +108,7 @@ async def new_monitoring(
     time_start: datetime,
     date_end: datetime,
     time_end: datetime,
+    notifier: str | None,
 ) -> None:
     client = MedicoverClient(username, password)
     try:
@@ -242,6 +251,26 @@ async def new_monitoring(
     if create_new_monitoring == "n":
         return
 
+    notifier_class: None | Notifier = None
+
+    if notifier is None:
+        create_notifier = click.prompt(
+            "Do you want to send a notification when an appointment is found?",
+            type=click.Choice(["y", "n"]),
+            default="y",
+        )
+        if create_notifier == "y":
+            notifier = click.prompt(
+                "Enter the notifier to send notifications to. ex. telegram", type=click.Choice(["telegram"])
+            )
+    if notifier == "telegram":
+        telegram_bot_token = os.getenv("NOTIFIERS_TELEGRAM_BOT_TOKEN")
+        telegram_chat_id = os.getenv("NOTIFIERS_TELEGRAM_CHAT_ID")
+        if telegram_bot_token is None or telegram_chat_id is None:
+            click.secho("Telegram notification is not configured properly. See README. Skipping...", fg="yellow")
+        else:
+            notifier_class = TelegramNotifier(telegram_bot_token, telegram_chat_id)
+
     click.secho("Creating new monitoring for parameters:", fg="green")
     click.secho(f"City: {region['value']}", fg="green")
     click.secho(f"Specialization: {specialization['value']}", fg="green")
@@ -251,9 +280,10 @@ async def new_monitoring(
     click.secho(f"Time from: {time_start.time()}", fg="green")
     click.secho(f"Date to: {date_end.date()}", fg="green")
     click.secho(f"Time to: {time_end.time()}", fg="green")
+
     while True:
         try:
-            available_slots = await client.get_available_slots(
+            available_slots: list[SlotItem] = await client.get_available_slots(
                 location_id,
                 specialization_id,
                 date_start,
@@ -263,12 +293,22 @@ async def new_monitoring(
         except httpx.HTTPStatusError as e:
             if httpx.codes.is_server_error(e.response.status_code):
                 click.secho("Server error. Retrying in 30 seconds...", fg="red")
+                if notifier_class:
+                    notifier_class.send_message("Server error.")
                 await asyncio.sleep(30)
                 continue
             else:
                 click.secho("Something went wrong with the API. Retrying in 30 seconds...", fg="red")
+                if notifier_class:
+                    notifier_class.send_message("API error.")
                 await asyncio.sleep(30)
                 continue
+        except (httpx.ConnectTimeout, httpx.ReadTimeout):
+            click.secho("Timeout error. Retrying in 60 seconds...", fg="red")
+            if notifier_class:
+                notifier_class.send_message("Timeout error")
+            await asyncio.sleep(60)
+            continue
 
         parsed_available_slot = []
         for slot in available_slots:
@@ -277,17 +317,27 @@ async def new_monitoring(
                 parsed_available_slot.append(slot)
 
         if parsed_available_slot:
-            # TODO add send notification to telegram
+            notifier_text = "Found the following available slots:\n"
             click.echo("Found the following available slots:")
 
-            for slot in slots:
+            for idx, slot in enumerate(parsed_available_slot):
                 click.secho("-----------------------", fg="yellow")
                 click.secho(f"Clinic: {slot["clinic"]["name"]}", fg="green")
                 click.secho(f"Doctor: {slot["doctor"]["name"]}", fg="green")
                 click.secho(
                     f"Date: {datetime.fromisoformat(slot["appointmentDate"]).strftime("%H:%M %d-%m-%Y")}", fg="green"
                 )
+                if idx != 0:
+                    notifier_text += "-----------------------\n"
+                notifier_text += (
+                    f"Specialization: {slot['specialty']['name']}\n"
+                    f"Clinic: {slot['clinic']['name']}\n"
+                    f"Doctor: {slot['doctor']['name']}\n"
+                    f"Date: {datetime.fromisoformat(slot['appointmentDate']).strftime('%H:%M %d-%m-%Y')}\n"
+                )
 
+            if notifier_class:
+                notifier_class.send_message(notifier_text)
             return
 
         click.secho("No available slots found for the given parameters. Retrying in 30 seconds...", fg="yellow")
