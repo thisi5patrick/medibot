@@ -28,3 +28,4 @@ repos:
           - python-dotenv
           - asyncclick
           - notifiers
+          - types-PyYAML

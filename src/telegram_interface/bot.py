@@ -16,6 +16,7 @@ from telegram.ext import (
     filters,
 )
 
+from src.logger_config import configure_logging
 from src.telegram_interface.commands.active_monitorings import active_monitorings_entrypoint, cancel_monitoring
 from src.telegram_interface.commands.future_appointments import future_appointments_entrypoint
 from src.telegram_interface.commands.login import login, password, username
@@ -76,10 +77,11 @@ from src.telegram_interface.states import (
     VERIFY_SUMMARY,
 )
 
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 load_dotenv()
+
+configure_logging()
+
+logger = logging.getLogger(__name__)
 
 
 async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> None:

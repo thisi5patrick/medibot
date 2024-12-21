@@ -1,0 +1,24 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  simple:
+    format: "%(asctime)s - %(name)s - [%(levelname)s] - %(message)s"
+
+loggers:
+  root:
+    level: PLACEHOLDER_LOG_LEVEL
+    handlers:
+    - stdout
+
+  third_party:
+    level: PLACEHOLDER_EXTERNAL_LOG_LEVEL
+    handlers:
+      - stdout
+    propagate: false
+
+handlers:
+  stdout:
+    class: logging.StreamHandler
+    formatter: simple
+    stream: ext://sys.stdout

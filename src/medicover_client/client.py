@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import hashlib
 import logging
@@ -70,7 +69,6 @@ class MedicoverClient:
         self.sign_in_cookie: None | str = None
         self._token: str = ""
         self.refresh_token: None | str = None
-        self.filters: None | dict[str, list[FilterDataType]] = None
 
     @property
     def token(self) -> str:
@@ -81,6 +79,7 @@ class MedicoverClient:
         return Headers({"authorization": self.token, "Host": "api-gateway-online24.medicover.pl"})
 
     async def do_refresh_token(self) -> None:
+        logger.info("Refreshing token")
         refresh_token_data = {
             "grant_type": "refresh_token",
             "refresh_token": self.refresh_token,
@@ -94,7 +93,10 @@ class MedicoverClient:
         async with AsyncClient() as client:
             response = await client.post(TOKEN_URL, headers=headers, data=refresh_token_data)
             if response.status_code != httpx.codes.OK:
+                logger.info("Failed to refresh token")
+                logger.info(response.text)
                 return
+            logger.info("Successfully refreshed token")
             self._token = response.json()["access_token"]
             self.refresh_token = response.json()["refresh_token"]
 
@@ -152,21 +154,6 @@ class MedicoverClient:
 
             logger.info("Successfully logged in")
 
-    async def load_filters(self) -> None:
-        async with AsyncClient(headers=self.headers) as client:
-            response = await client.get(FILTER_SEARCH_URL)
-            response.raise_for_status()
-
-        self.filters = response.json()
-
-    async def create_monitor(self, **kwargs: Any) -> None:
-        while True:
-            slots = await self.get_available_slots(**kwargs)
-            if slots:
-                break
-            logger.info("No slots available for given parameters. Trying again in 30 seconds...")
-            await asyncio.sleep(30)
-
     @with_login_retry
     async def get_available_slots(
         self,
@@ -176,6 +163,16 @@ class MedicoverClient:
         doctor_id: int | None = None,
         clinic_id: int | None = None,
     ) -> list[SlotItem]:
+        if isinstance(from_date, datetime):
+            from_date = from_date.date()
+        logger.info(
+            "Getting available slots for region=%s, specialization=%s, from_date=%s, doctor_id=%s, clinic_id=%s",
+            region_id,
+            specialization_id,
+            from_date,
+            doctor_id,
+            clinic_id,
+        )
         search_since_formatted = from_date.strftime("%Y-%m-%d")
         async with AsyncClient(headers=self.headers) as client:
             response = await client.get(
@@ -194,16 +191,22 @@ class MedicoverClient:
             response.raise_for_status()
 
         response_json = response.json()
-        return cast(list[SlotItem], response_json["items"])
+
+        slots: list[SlotItem] = response_json.get("slots", [])
+        logger.info("Found %s available slots", len(slots))
+
+        return slots
 
     @with_login_retry
     async def get_all_regions(self) -> list[FilterDataType]:
+        logger.info("Getting all regions")
         async with AsyncClient(headers=self.headers) as client:
             response = await client.get(REGION_SEARCH_URL)
             response.raise_for_status()
 
         response_json = response.json()
         response_regions: list[FilterDataType] = response_json.get("regions", [])
+        logger.info("Found %s regions", len(response_regions))
 
         return response_regions
 
@@ -211,6 +214,7 @@ class MedicoverClient:
         response_json = await self.get_filters_data(region_id, None, None)
 
         response_specializations: list[FilterDataType] = response_json.get("specialties", [])
+        logger.info("Found %s specializations", len(response_specializations))
 
         return response_specializations
 
@@ -218,6 +222,7 @@ class MedicoverClient:
         response_json = await self.get_filters_data(region_id, specialization_id)
 
         response_clinics: list[FilterDataType] = response_json.get("clinics", [])
+        logger.info("Found %s clinics", len(response_clinics))
 
         return response_clinics
 
@@ -227,6 +232,7 @@ class MedicoverClient:
         response_json = await self.get_filters_data(region_id, specialization_id, clinic_id)
 
         response_specializations: list[FilterDataType] = response_json.get("doctors", [])
+        logger.info("Found %s doctors", len(response_specializations))
 
         return response_specializations
 
@@ -234,6 +240,9 @@ class MedicoverClient:
     async def get_filters_data(
         self, region_id: str, specialization_id: str | None = None, clinic_id: str | None = None
     ) -> dict[str, list[FilterDataType]]:
+        logger.info(
+            "Getting filters data for region=%s, specialization=%s, clinic=%s", region_id, specialization_id, clinic_id
+        )
         async with AsyncClient(headers=self.headers) as client:
             response = await client.get(
                 FILTER_SEARCH_URL,
@@ -245,11 +254,12 @@ class MedicoverClient:
             )
             response.raise_for_status()
 
-        response_json = response.json()
-        return cast(dict[str, list[FilterDataType]], response_json)
+        response_json: dict[str, list[FilterDataType]] = response.json()
+        return response_json
 
     @with_login_retry
     async def get_future_appointments(self) -> list[AppointmentItem]:
+        logger.info("Getting future appointments")
         today = date.today().strftime("%Y-%m-%d")
 
         async with AsyncClient(headers=self.headers) as client:
@@ -265,5 +275,6 @@ class MedicoverClient:
             response.raise_for_status()
 
         items = cast(list[AppointmentItem], response.json().get("items", []))
+        logger.info("Found %s future appointments", len(items))
 
         return items

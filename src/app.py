@@ -1,4 +1,5 @@
 import asyncio
+import logging.config
 import os
 from datetime import date, datetime, timedelta
 from typing import cast
@@ -9,11 +10,16 @@ from dotenv import load_dotenv
 from pick import pick
 
 from src.app_notifiers import Notifier, TelegramNotifier
+from src.logger_config import configure_logging
 from src.medicover_client.client import FilterDataType, MedicoverClient
 from src.medicover_client.exceptions import IncorrectLoginError
 from src.medicover_client.types import SlotItem
 
 load_dotenv()
+
+configure_logging()
+
+logger = logging.getLogger(__name__)
 
 
 def match_input_to_filter(user_text: str, filters_data: list[FilterDataType]) -> list[FilterDataType]:
@@ -110,6 +116,7 @@ async def new_monitoring(
     time_end: datetime,
     notifier: str | None,
 ) -> None:
+    logger.info("Starting new monitoring")
     client = MedicoverClient(username, password)
     try:
         await client.log_in()
@@ -120,8 +127,11 @@ async def new_monitoring(
     all_locations = await client.get_all_regions()
 
     if location_id is None:
+        logger.info("No location ID provided. Picking location from user input")
         location_input = click.prompt("Enter a city or part of it", type=str)
         matching_locations = match_input_to_filter(location_input, all_locations)
+
+        logger.info("Found %s matching locations", len(matching_locations))
 
         if not matching_locations:
             region = pick_from_items(all_locations, "City not found. Select the location from the list:")
@@ -131,19 +141,26 @@ async def new_monitoring(
             region = matching_locations[0]
 
     else:
+        logger.info("Location ID provided. Using provided location ID")
         matching_location = next((location for location in all_locations if location["id"] == location_id), None)
         if not matching_location:
             region = pick_from_items(all_locations, "City not found. Select the location from the list:")
         else:
             region = matching_location
+
+    logger.info("Selected region: id=%s, value=%s", region["id"], region["value"])
     location_id = region["id"]
 
-    click.secho(f"Selected region: {region["value"]}", fg="green")
+    click.secho(f"Selected region: {region["value"]} (id={region["id"]})", fg="green")
 
     all_specializations = await client.get_all_specializations(region["id"])
+
     if specialization_id is None:
+        logger.info("No specialization ID provided. Picking specialization from user input")
         specialization_input = click.prompt("Enter a specialization or part of it", type=str)
         matching_specializations = match_input_to_filter(specialization_input, all_specializations)
+
+        logger.info("Found %s matching specializations", len(matching_specializations))
 
         if not matching_specializations:
             specialization = pick_from_items(
@@ -154,6 +171,7 @@ async def new_monitoring(
         else:
             specialization = matching_specializations[0]
     else:
+        logger.info("Specialization ID provided. Using provided specialization ID")
         matching_specialization: FilterDataType | None = next(
             (specialization for specialization in all_specializations if specialization["id"] == specialization_id),
             None,
@@ -164,13 +182,15 @@ async def new_monitoring(
             )
         else:
             specialization = matching_specialization
+    logger.info("Selected specialization: id=%s, value=%s", specialization["id"], specialization["value"])
     specialization_id = specialization["id"]
 
-    click.secho(f"Selected specialization: {specialization["value"]}", fg="green")
+    click.secho(f"Selected specialization: {specialization["value"]} (id={specialization["id"]})", fg="green")
 
     all_clinics = await client.get_all_clinics(region["id"], specialization["id"])
 
     if clinic_id is None:
+        logger.info("No clinic ID provided. Picking clinic from user input")
         clinic_input = click.prompt(
             "Enter a clinic or part of it or Enter for any", type=str, default="", show_default=False
         )
@@ -186,18 +206,22 @@ async def new_monitoring(
             else:
                 clinic = matching_clinics[0]
     else:
+        logger.info("Clinic ID provided. Using provided clinic ID")
         matching_clinic = next((clinic for clinic in all_clinics if clinic["id"] == clinic_id), None)
         if not matching_clinic:
             clinic = pick_from_items(all_clinics, "Clinic not found. Select the clinic from the list:")
         else:
             clinic = matching_clinic
+
+    logger.info("Selected clinic: id=%s, value=%s", clinic["id"], clinic["value"])
     clinic_id = clinic["id"]
 
-    click.secho(f"Selected clinic: {clinic["value"]}", fg="green")
+    click.secho(f"Selected clinic: {clinic["value"]} (id={clinic["id"]})", fg="green")
 
     all_doctors = await client.get_all_doctors(region["id"], specialization["id"], clinic["id"])
 
     if doctor_id is None:
+        logger.info("No doctor ID provided. Picking doctor from user input")
         doctor_input = click.prompt(
             "Enter a doctor or part of it or Enter for any", type=str, default="", show_default=False
         )
@@ -213,14 +237,16 @@ async def new_monitoring(
             else:
                 doctor = matching_doctors[0]
     else:
+        logger.info("Doctor ID provided. Using provided doctor ID")
         matching_doctor = next((doctor for doctor in all_doctors if doctor["id"] == doctor_id), None)
         if not matching_doctor:
             doctor = pick_from_items(all_doctors, "Doctor not found. Select the doctor from the list:")
         else:
             doctor = matching_doctor
+    logger.info("Selected doctor: id=%s, value=%s", doctor["id"], doctor["value"])
     doctor_id = doctor["id"]
 
-    click.secho(f"Selected doctor: {doctor['value']}", fg="green")
+    click.secho(f"Selected doctor: {doctor["value"]} (id={doctor["id"]})", fg="green")
     click.echo("Looking for available appointments...")
 
     now = date.today()
@@ -244,13 +270,16 @@ async def new_monitoring(
             )
 
         return
+
     click.secho("No available slots found", fg="red")
     create_new_monitoring = click.prompt(
         "Do you want to create a new monitoring?", type=click.Choice(["y", "n"]), default="y"
     )
     if create_new_monitoring == "n":
+        logger.info("Not creating new monitoring")
         return
 
+    logger.info("Creating new monitoring")
     notifier_class: None | Notifier = None
 
     if notifier is None:
@@ -268,14 +297,16 @@ async def new_monitoring(
         telegram_chat_id = os.getenv("NOTIFIERS_TELEGRAM_CHAT_ID")
         if telegram_bot_token is None or telegram_chat_id is None:
             click.secho("Telegram notification is not configured properly. See README. Skipping...", fg="yellow")
+            logger.info("Telegram notification is not configured properly. Skipping...")
         else:
+            logger.info("Telegram notification configured")
             notifier_class = TelegramNotifier(telegram_bot_token, telegram_chat_id)
 
     click.secho("Creating new monitoring for parameters:", fg="green")
-    click.secho(f"City: {region['value']}", fg="green")
-    click.secho(f"Specialization: {specialization['value']}", fg="green")
-    click.secho(f"Clinic: {clinic['value']}", fg="green")
-    click.secho(f"Doctor: {doctor['value']}", fg="green")
+    click.secho(f"City: {region["value"]}", fg="green")
+    click.secho(f"Specialization: {specialization["value"]}", fg="green")
+    click.secho(f"Clinic: {clinic["value"]}", fg="green")
+    click.secho(f"Doctor: {doctor["value"]}", fg="green")
     click.secho(f"Date from: {date_start.date()}", fg="green")
     click.secho(f"Time from: {time_start.time()}", fg="green")
     click.secho(f"Date to: {date_end.date()}", fg="green")
@@ -291,6 +322,7 @@ async def new_monitoring(
                 clinic_id,
             )
         except httpx.HTTPStatusError as e:
+            logger.error("HTTP error: %s", e)
             if httpx.codes.is_server_error(e.response.status_code):
                 click.secho("Server error. Retrying in 30 seconds...", fg="red")
                 if notifier_class:
@@ -303,7 +335,8 @@ async def new_monitoring(
                     notifier_class.send_message("API error.")
                 await asyncio.sleep(30)
                 continue
-        except (httpx.ConnectTimeout, httpx.ReadTimeout):
+        except (httpx.ConnectTimeout, httpx.ReadTimeout) as e:
+            logger.error("Timeout error: %s", e)
             click.secho("Timeout error. Retrying in 60 seconds...", fg="red")
             if notifier_class:
                 notifier_class.send_message("Timeout error")
@@ -317,6 +350,7 @@ async def new_monitoring(
                 parsed_available_slot.append(slot)
 
         if parsed_available_slot:
+            logger.info("Found %s matching available slots", len(parsed_available_slot))
             notifier_text = "Found the following available slots:\n"
             click.echo("Found the following available slots:")
 
@@ -330,16 +364,18 @@ async def new_monitoring(
                 if idx != 0:
                     notifier_text += "-----------------------\n"
                 notifier_text += (
-                    f"Specialization: {slot['specialty']['name']}\n"
-                    f"Clinic: {slot['clinic']['name']}\n"
-                    f"Doctor: {slot['doctor']['name']}\n"
-                    f"Date: {datetime.fromisoformat(slot['appointmentDate']).strftime('%H:%M %d-%m-%Y')}\n"
+                    f"Specialization: {slot["specialty"]["name"]}\n"
+                    f"Clinic: {slot["clinic"]["name"]}\n"
+                    f"Doctor: {slot["doctor"]["name"]}\n"
+                    f"Date: {datetime.fromisoformat(slot["appointmentDate"]).strftime("%H:%M %d-%m-%Y")}\n"
                 )
 
             if notifier_class:
+                logger.info("Sending notification to notifier")
                 notifier_class.send_message(notifier_text)
             return
 
+        logger.info("No available slots found")
         click.secho("No available slots found for the given parameters. Retrying in 30 seconds...", fg="yellow")
         await asyncio.sleep(30)
 
@@ -366,6 +402,7 @@ async def new_monitoring(
 )
 async def future_appointments(username: str, password: str) -> None:
     client = MedicoverClient(username, password)
+    logger.info("Starting future appointments check")
     try:
         await client.log_in()
     except IncorrectLoginError:
@@ -374,6 +411,7 @@ async def future_appointments(username: str, password: str) -> None:
     all_future_appointments = await client.get_future_appointments()
     if not all_future_appointments:
         click.echo("No future appointments")
+
     for appointment in all_future_appointments:
         click.secho("-----------------------", fg="yellow")
         click.secho(f"Specialization: {appointment["specialty"]["name"]}", fg="green")
