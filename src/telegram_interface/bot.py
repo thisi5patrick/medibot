@@ -84,6 +84,10 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 
+class MissingEnvironmentVariableError(Exception):
+    pass
+
+
 async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> None:
     await application.bot.set_my_commands(
         [
@@ -105,10 +109,18 @@ async def end_current_command(*args: Any, **kwargs: Any) -> int:
 class TelegramBot:
     def __init__(self) -> None:
         source_folder = Path(__file__).resolve().parent.parent.parent
-        pickle_file_path = Path(os.environ["TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH"])
+        pickle_file_path = Path(
+            os.environ.get(
+                "TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH",
+                "./src/persistence_files/data.pickle",
+            )
+        )
         file_path = source_folder / pickle_file_path
 
         persistence = PicklePersistence(filepath=file_path)
+
+        if "TELEGRAM_BOT_TOKEN" not in os.environ:
+            raise MissingEnvironmentVariableError("Missing TELEGRAM_BOT_TOKEN environment variable")
 
         self.bot = (
             ApplicationBuilder()
