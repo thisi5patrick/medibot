@@ -23,6 +23,11 @@ asyncclick = "^8.1.7.2"
 pytest-dotenv = "^0.5.2"
 notifiers = {git = "https://github.com/liiight/notifiers.git", rev = "f97e7c7979c9598394cb2172e600055458f35d37"}
 pyyaml = "^6.0.2"
+langchain = "^0.3.13"
+langchain-ollama = "^0.2.2"
+ollama = "^0.4.4"
+langchain-community = "^0.3.13"
+langgraph = "^0.2.60"
 
 
 [tool.poetry.group.dev.dependencies]
