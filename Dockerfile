@@ -20,14 +20,14 @@ COPY . .
 
 ENV PYTHONPATH=/app
 
-FROM base as telegram-bot
-
-ENTRYPOINT ["poetry", "run"]
-
-CMD ["python", "src/telegram_interface/bot.py"]
-
 FROM base as cli-app
 
 RUN poetry run pip install -e .
 
 ENTRYPOINT ["poetry", "run", "medibot"]
+
+FROM base as telegram-bot
+
+ENTRYPOINT ["poetry", "run"]
+
+CMD ["python", "src/telegram_interface/bot.py"]
