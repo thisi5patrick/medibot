@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: medibot
+    runtime: docker
+    repo: https://github.com/thisi5patrick/medibot
+    plan: free
+    envVars:
+      - key: TELEGRAM_PERSISTENCE_PICKLE_FILE_PATH
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+    region: frankfurt
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      TARGET: telegram-bot
+    autoDeploy: false
+version: "1"
