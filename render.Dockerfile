@@ -22,4 +22,4 @@ ENV PYTHONPATH=/app
 
 ENTRYPOINT ["poetry", "run"]
 
-CMD ["python", "src/telegram_interface/bot.py", "&", "python", "-m", "http.server", "8080"]
+CMD ["sh", "-c", "python src/telegram_interface/bot.py & python src/serve_readme.py"]
