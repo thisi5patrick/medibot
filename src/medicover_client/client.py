@@ -93,8 +93,8 @@ class MedicoverClient:
         async with AsyncClient() as client:
             response = await client.post(TOKEN_URL, headers=headers, data=refresh_token_data)
             if response.status_code != httpx.codes.OK:
-                logger.info("Failed to refresh token")
-                logger.info(response.text)
+                logger.warning("Failed to refresh token")
+                logger.warning(response.text)
                 return
             logger.info("Successfully refreshed token")
             self._token = response.json()["access_token"]

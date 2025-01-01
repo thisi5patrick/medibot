@@ -1,4 +1,4 @@
-FROM python:3.12 as base
+FROM python:3.12-alpine as base
 
 ENV PYTHONFAULTHANDLER=1 \
     PYTHONHASHSEED=random \
@@ -7,6 +7,8 @@ ENV PYTHONFAULTHANDLER=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     POETRY_VERSION=1.8.2
+
+RUN apk add --no-cache build-base
 
 RUN pip install "poetry==$POETRY_VERSION"
 
