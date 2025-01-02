@@ -1,12 +1,18 @@
+import logging
+import os
 from calendar import monthrange
 from datetime import date, datetime
 from typing import Literal
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
 from src.locale_handler import _
 from src.medicover_client.client import FilterDataType
 from src.telegram_interface.user_data import UserDataDataclass
+
+logger = logging.getLogger(__name__)
 
 YES_ANSWER = "yes"
 NO_ANSWER = "no"
@@ -325,3 +331,15 @@ def match_input_to_filter(user_text: str, filters_data: list[FilterDataType]) ->
         if user_text.lower() in available_filter["value"].lower():
             selected_filters.append(available_filter)
     return selected_filters
+
+
+async def send_to_dev_message(context: ContextTypes.DEFAULT_TYPE, message: str) -> None:
+    admin_chat_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID")
+    if admin_chat_id is None:
+        logger.warning("TELEGRAM_ADMIN_CHAT_ID is not set. Skipping sending to dev chat.")
+        return
+    await context.bot.send_message(
+        chat_id=admin_chat_id,
+        text=message,
+        parse_mode=ParseMode.HTML,
+    )

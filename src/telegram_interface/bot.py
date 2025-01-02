@@ -8,7 +8,6 @@ from typing import Any, cast
 
 from dotenv import load_dotenv
 from telegram import BotCommand, Chat, Update
-from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -57,6 +56,7 @@ from src.telegram_interface.commands.settings import (
     show_change_language,
 )
 from src.telegram_interface.commands.start import start_entrypoint
+from src.telegram_interface.helpers import send_to_dev_message
 from src.telegram_interface.states import (
     CANCEL_MONITORING,
     CHANGE_LANGUAGE,
@@ -108,35 +108,37 @@ async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> N
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.error("Exception while handling an update:", exc_info=context.error)
+    logger.error("Exception was raised:", exc_info=context.error)
+
+    error = cast(Exception, context.error)
+    tb_list = traceback.format_exception(None, error, error.__traceback__)
+    tb_string = "".join(tb_list)
+
+    if context.user_data is None:
+        pretty_user_data = "null"
+    else:
+        pretty_user_data = json.dumps(context.user_data, indent=4)
+
+    base_message = (
+        "{base_error_message}\n"
+        f"<pre>context.user_data = {html.escape(pretty_user_data)}</pre>\n\n"
+        f"<pre>{html.escape(tb_string)}</pre>"
+    )
 
     if update is None:
-        error = cast(Exception, context.error)
-        tb_list = traceback.format_exception(None, error, error.__traceback__)
-        tb_string = "".join(tb_list)
+        base_error_message = "An exception was raised while handling an update"
+        message = base_message.format(base_error_message=base_error_message)
 
-        update_str = str(update)
+        await send_to_dev_message(context, message)
+        return
 
-        message = (
-            "An exception was raised while handling an update\n"
-            f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
-            "</pre>\n\n"
-            f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
-            f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
-            f"<pre>{html.escape(tb_string)}</pre>"
-        )
-        await context.bot.send_message(
-            chat_id=os.environ["TELEGRAM_ADMIN_CHAT_ID"],
-            text=message,
-            parse_mode=ParseMode.HTML,
-        )
-    update = cast(Update, update)
-    chat = cast(Chat, update.effective_chat)
-    chat_id = chat.id
-
-    if isinstance(context.error, KeyError):
-        missing_key = context.error.args[0]
+    if isinstance(error, KeyError):
+        missing_key = error.args[0]
         if missing_key == "language":
+            update = cast(Update, update)
+            chat = cast(Chat, update.effective_chat)
+            chat_id = chat.id
+
             logger.warning("KeyError: Missing 'language' key in user data.")
             await context.bot.send_message(
                 chat_id=chat_id,
@@ -144,12 +146,16 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
             )
             return None
         else:
-            logger.warning("KeyError: An error has occurred. Missing '%s' key in user data.", missing_key)
+            base_error_message = f"KeyError: An error has occurred. Missing '{missing_key}' key in user data."
+            message = base_message.format(base_error_message=base_error_message)
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="Something went wrong. Please try again later.",
-    )
+            await send_to_dev_message(context, message)
+            logger.error("KeyError: An error has occurred. Missing '%s' key in user data.", missing_key)
+
+    base_error_message = "An error has occurred."
+    message = base_message.format(base_error_message=base_error_message)
+
+    await send_to_dev_message(context, message)
 
 
 async def end_current_command(*args: Any, **kwargs: Any) -> int:

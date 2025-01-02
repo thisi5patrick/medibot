@@ -7,12 +7,12 @@ formatters:
 
 loggers:
   root:
-    level: PLACEHOLDER_LOG_LEVEL
+    level: INFO
     handlers:
     - stdout
 
   third_party:
-    level: PLACEHOLDER_EXTERNAL_LOG_LEVEL
+    level: WARNING
     handlers:
       - stdout
     propagate: false

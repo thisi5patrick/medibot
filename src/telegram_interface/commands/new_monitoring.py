@@ -4,6 +4,7 @@ import logging
 from datetime import date, datetime, time
 from typing import cast
 
+import httpx
 import telegram
 from telegram import (
     CallbackQuery,
@@ -31,6 +32,7 @@ from src.telegram_interface.helpers import (
     prepare_specialization_keyboard,
     prepare_summary,
     prepare_time_keyboard,
+    send_to_dev_message,
     update_date_selection_buttons,
     update_time_selection_buttons,
 )
@@ -1039,13 +1041,20 @@ async def create_monitoring_task(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     while True:
-        available_slots: list[SlotItem] = await client.get_available_slots(
-            location_id,
-            specialization_id,
-            from_date_obj,
-            doctor_id,
-            clinic_id,
-        )
+        try:
+            available_slots: list[SlotItem] = await client.get_available_slots(
+                location_id,
+                specialization_id,
+                from_date_obj,
+                doctor_id,
+                clinic_id,
+            )
+        except httpx.TimeoutException:
+            logger.error("Timeout error. Retrying...")
+            await send_to_dev_message(context, "Timeout error")
+            await asyncio.sleep(30)
+            continue
+
         parsed_available_slot = []
 
         for slot in available_slots:
