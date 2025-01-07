@@ -173,6 +173,11 @@ class TelegramBot:
         )
         file_path = source_folder / pickle_file_path
 
+        if not file_path.parent.exists():
+            logger.warning("Persistence file path does not exist. Creating it.")
+        else:
+            logger.info("Loading persistence file.")
+
         persistence = PicklePersistence(filepath=file_path)
 
         if "TELEGRAM_BOT_TOKEN" not in os.environ:

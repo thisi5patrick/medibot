@@ -1054,6 +1054,20 @@ async def create_monitoring_task(update: Update, context: ContextTypes.DEFAULT_T
             await send_to_dev_message(context, "Timeout error")
             await asyncio.sleep(30)
             continue
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == httpx.codes.TOO_MANY_REQUESTS:
+                logger.error("Too many requests. Retrying...")
+                await send_to_dev_message(context, "Too many requests error.")
+                await asyncio.sleep(300)
+                continue
+            else:
+                raise e
+        except Exception as e:
+            error_message = f"{type(e).__name__}: {e!s}\n"
+            logger.error("An error occurred: %s", error_message)
+            await send_to_dev_message(context, error_message)
+            await asyncio.sleep(600)
+            continue
 
         parsed_available_slot = []
 
