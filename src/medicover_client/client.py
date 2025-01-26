@@ -40,12 +40,12 @@ def with_login_retry(func: Callable[..., Awaitable[R]]) -> Callable[..., Awaitab
         attempts = 0
 
         while attempts < MAX_RETRY_ATTEMPTS:
-            if self._token is None:
-                logger.warning("Attempt %s to sign in.", attempts + 1)
-                await self.log_in()
-
             try:
-                await self.do_refresh_token()
+                if not self._token:
+                    logger.warning("Attempt %s to sign in.", attempts + 1)
+                    await self.log_in()
+                else:
+                    await self.do_refresh_token()
                 return await func(self, *args, **kwargs)
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == httpx.codes.UNAUTHORIZED:
@@ -54,6 +54,10 @@ def with_login_retry(func: Callable[..., Awaitable[R]]) -> Callable[..., Awaitab
                     await self.log_in()
                 else:
                     raise
+            except IncorrectLoginError as e:
+                self.sign_in_cookie = None
+                logger.warning("Incorrect login credentials. Will not attempt to re-authenticate.")
+                raise AuthenticationError from e
             finally:
                 attempts += 1
 
