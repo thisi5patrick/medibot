@@ -1,19 +1,15 @@
-import html
-import json
 import logging
 import os
-import traceback
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from dotenv import load_dotenv
-from telegram import BotCommand, Chat, Update
+from telegram import BotCommand
 from telegram.ext import (
     Application,
     ApplicationBuilder,
     CallbackQueryHandler,
     CommandHandler,
-    ContextTypes,
     ConversationHandler,
     MessageHandler,
     PicklePersistence,
@@ -56,7 +52,7 @@ from src.telegram_interface.commands.settings import (
     show_change_language,
 )
 from src.telegram_interface.commands.start import start_entrypoint
-from src.telegram_interface.helpers import send_to_dev_message
+from src.telegram_interface.error_handler import default_error_handler
 from src.telegram_interface.states import (
     CANCEL_MONITORING,
     CHANGE_LANGUAGE,
@@ -105,57 +101,6 @@ async def post_init(application: Application[Any, Any, Any, Any, Any, Any]) -> N
             BotCommand("/help", "Show help message"),
         ]
     )
-
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.error("Exception was raised:", exc_info=context.error)
-
-    error = cast(Exception, context.error)
-    tb_list = traceback.format_exception(None, error, error.__traceback__)
-    tb_string = "".join(tb_list)
-
-    if context.user_data is None:
-        pretty_user_data = "null"
-    else:
-        pretty_user_data = json.dumps(context.user_data, indent=4)
-
-    base_message = (
-        "{base_error_message}\n"
-        f"<pre>context.user_data = {html.escape(pretty_user_data)}</pre>\n\n"
-        f"<pre>{html.escape(tb_string)}</pre>"
-    )
-
-    if update is None:
-        base_error_message = "An exception was raised while handling an update"
-        message = base_message.format(base_error_message=base_error_message)
-
-        await send_to_dev_message(context, message)
-        return
-
-    if isinstance(error, KeyError):
-        missing_key = error.args[0]
-        if missing_key == "language":
-            update = cast(Update, update)
-            chat = cast(Chat, update.effective_chat)
-            chat_id = chat.id
-
-            logger.warning("KeyError: Missing 'language' key in user data.")
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="The bot has not been initialized properly. Please run the /start command.",
-            )
-            return None
-        else:
-            base_error_message = f"KeyError: An error has occurred. Missing '{missing_key}' key in user data."
-            message = base_message.format(base_error_message=base_error_message)
-
-            await send_to_dev_message(context, message)
-            logger.error("KeyError: An error has occurred. Missing '%s' key in user data.", missing_key)
-
-    base_error_message = "An error has occurred."
-    message = base_message.format(base_error_message=base_error_message)
-
-    await send_to_dev_message(context, message)
 
 
 async def end_current_command(*args: Any, **kwargs: Any) -> int:
@@ -371,7 +316,7 @@ class TelegramBot:
         self.bot.add_handler(settings_handler, 4)
         self.bot.add_handler(future_appointments_handler, 5)
 
-        self.bot.add_error_handler(error_handler)
+        self.bot.add_error_handler(default_error_handler)
 
         self.bot.run_polling()
 

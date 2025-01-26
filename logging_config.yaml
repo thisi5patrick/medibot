@@ -2,8 +2,9 @@ version: 1
 disable_existing_loggers: false
 
 formatters:
-  simple:
-    format: "%(asctime)s - %(name)s - [%(levelname)s] - %(message)s"
+  json:
+    format: '{"timestamp": "%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s", "stack_trace": "%(exc_text)s"}'
+
 
 loggers:
   root:
@@ -15,10 +16,10 @@ loggers:
     level: WARNING
     handlers:
       - stdout
-    propagate: false
+    propagate: true
 
 handlers:
   stdout:
     class: logging.StreamHandler
-    formatter: simple
+    formatter: json
     stream: ext://sys.stdout

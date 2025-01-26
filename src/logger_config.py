@@ -18,7 +18,7 @@ def configure_logging() -> None:
     if "third_party" in logging_config["loggers"] and external_log_level:
         logging_config["loggers"]["third_party"]["level"] = external_log_level
     if logging_format:
-        logging_config["formatters"]["simple"]["format"] = logging_format
+        logging_config["formatters"]["json"]["format"] = logging_format
 
     logging.config.dictConfig(logging_config)
 
